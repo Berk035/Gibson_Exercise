@@ -30,8 +30,9 @@ from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
 import time
 
-DEFAULT_TIMESTEP  = 1.0/(4 * 9)
+DEFAULT_TIMESTEP = 1.0 / (4 * 9)
 DEFAULT_FRAMESKIP = 4
+
 DEFAULT_DEBUG_CAMERA = {
     'yaw': 30,
     'distance': 2.5,
@@ -39,6 +40,7 @@ DEFAULT_DEBUG_CAMERA = {
     'z_offset': 0
 }
 
+#Scale ve offset factor anlamı nedir?
 DEPTH_SCALE_FACTOR = 35
 DEPTH_OFFSET_FACTOR = 20
 
@@ -57,16 +59,15 @@ class BaseRobotEnv(BaseEnv):
         self.k = 5
         self.robot_tracking_id = -1
 
-        self.scale_up  = 4
+        self.scale_up = 4
         self.dataset = None
         self.ground_ids = None
         if self.gui:
-            assert(self.tracking_camera is not None)
+            assert (self.tracking_camera is not None)
         self.gpu_idx = gpu_idx
         self.assign_ports()
         self.nframe = 0
         self.eps_reward = 0
-
         self.reward = 0
         self.eps_count = 0
 
@@ -74,9 +75,8 @@ class BaseRobotEnv(BaseEnv):
         self._scene_introduced = False
 
     def assign_ports(self):
-        '''Rendering multiple modalities (RGB, depth, normal) needs to be done 
+        '''Rendering multiple modalities (RGB, depth, normal) needs to be done
         on different ports. Assign individual ports to each modality:
-
         | Rendering | Port         |
         | RGB       | Default      |
         | Depth     | Default - 1  |
@@ -88,8 +88,8 @@ class BaseRobotEnv(BaseEnv):
         self.port_rgb = self.DEFAULT_PORT - self.gpu_idx * 5
         self.port_depth = self.port_rgb - 1
         self.port_normal = self.port_rgb - 2
-        self.port_sem  = self.port_rgb - 3
-        self.port_ui   = self.port_rgb - 4
+        self.port_sem = self.port_rgb - 3
+        self.port_ui = self.port_rgb - 4
 
     def robot_introduce(self, robot):
         self.robot = robot
@@ -137,11 +137,11 @@ class BaseRobotEnv(BaseEnv):
     def _reset(self):
         assert(self._robot_introduced)
         assert(self._scene_introduced)
-        debugmode = 1
+        debugmode = 0
         if debugmode:
+            # body_xyz = self.robot.body_xyz
+            # print("[{}, {}, {}],".format(body_xyz[0], body_xyz[1], body_xyz[2]))
             print("Episode: steps:{} score:{}".format(self.nframe, self.reward))
-            body_xyz = self.robot.body_xyz
-            #print("[{}, {}, {}],".format(body_xyz[0], body_xyz[1], body_xyz[2]))
             print("Episode count: {}".format(self.eps_count))
             self.eps_count += 1
         self.nframe = 0
@@ -150,11 +150,11 @@ class BaseRobotEnv(BaseEnv):
 
         if not self.ground_ids:
             self.parts, self.jdict, self.ordered_joints, self.robot_body = self.robot.addToScene(
-                    [])
+                [])
             self.ground_ids = set(self.scene.scene_obj_list)
 
         ## Todo: (hzyjerry) this part is not working, robot_tracking_id = -1
-        for i in range (p.getNumBodies()):
+        for i in range(p.getNumBodies()):
             if (p.getBodyInfo(i)[0].decode() == self.robot_body.get_name()):
                self.robot_tracking_id=i
             #print(p.getBodyInfo(i)[0].decode())
@@ -168,16 +168,17 @@ class BaseRobotEnv(BaseEnv):
         orn = self.robot.get_orientation()
 
         pos = (pos[0], pos[1], pos[2] + self.tracking_camera['z_offset'])
-        p.resetDebugVisualizerCamera(self.tracking_camera['distance'],self.tracking_camera['yaw'], self.tracking_camera['pitch'],pos)
+        if self.config["mode"]=="gui":
+            p.resetDebugVisualizerCamera(self.tracking_camera['distance'], self.tracking_camera['yaw'],
+                                         self.tracking_camera['pitch'], pos)
         return observations
 
-    electricity_cost     = -2.0 # cost for using motors -- this parameter should be carefully tuned against reward for making progress, other values less improtant
-    stall_torque_cost   = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
-    foot_collision_cost  = -1.0 # touches another leg, or other objects, that cost makes robot avoid smashing feet into itself
+    electricity_cost = -2.0  # cost for using motors -- this parameter should be carefully tuned against reward for making progress, other values less improtant
+    stall_torque_cost = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
+    foot_collision_cost = -1.0  # touches another leg, or other objects, that cost makes robot avoid smashing feet into itself
     wall_collision_cost = -0.1
     foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
     joints_at_limit_cost = -0.1 # discourage stuck joints
-
 
     def _step(self, a):
         self.nframe += 1
@@ -187,20 +188,10 @@ class BaseRobotEnv(BaseEnv):
 
         self.rewards = self._rewards(a)
         done = self._termination()
-        debugmode=0
-        if (debugmode):
-            print("rewards=")
-            print(self.rewards)
-            print("sum rewards")
-            print(sum(self.rewards))
 
         self.reward += sum(self.rewards)
         self.eps_reward += sum(self.rewards)
 
-        debugmode = 0
-        if debugmode:
-            print("Eps frame {} reward {}".format(self.nframe, self.reward))
-            print("position", self.robot.get_position())
         if self.gui:
             pos = self.robot._get_scaled_position()
             orn = self.robot.get_orientation()
@@ -213,10 +204,17 @@ class BaseRobotEnv(BaseEnv):
         pose = [eye_pos, eye_quat]
         observations = self.render_observations(pose)
 
+        x,y,z = self.robot.get_position()
+        roll,pitch,yaw=self.robot.get_rpy()
+        #tar_x,tar_y,tar_z = []
+
         debugmode = 0
-        if (debugmode):
-            print("Camera env eye position", eye_pos)
-            print("episode rewards", sum(self.rewards), "steps", self.nframe)
+        if debugmode:
+            print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
+            print("Frame Reward: %.5f" % sum(self.rewards))
+            print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
+            print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            print("-------------------------------")
 
         episode = None
         if done:
@@ -240,7 +238,7 @@ class BaseRobotEnv(BaseEnv):
     def get_eye_pos_orientation(self):
         """Used in CameraEnv.setup"""
         eye_pos = self.robot.eyes.get_position()
-        x, y, z ,w = self.robot.eyes.get_orientation()
+        x, y, z, w = self.robot.eyes.get_orientation()
         eye_quat = [w, x, y, z]
         return eye_pos, eye_quat
 
@@ -253,8 +251,8 @@ class BaseRobotEnv(BaseEnv):
 
     def camera_adjust(self):
         x, y, z = self.body_xyz
-        self.camera_x = 0.98*self.camera_x + (1-0.98)*x
-        self.camera.move_and_look_at(self.camera_x, y-2.0, 1.4, x, y, 1.0)
+        self.camera_x = 0.98 * self.camera_x + (1 - 0.98) * x
+        self.camera.move_and_look_at(self.camera_x, y - 2.0, 1.4, x, y, 1.0)
 
     def find_best_k_views(self, eye_pos, all_dist, all_pos, avoid_block=False):
         least_order = (np.argsort(all_dist))
@@ -268,7 +266,7 @@ class BaseRobotEnv(BaseEnv):
 
         while len(top_k) < self.k:
             curr_order = least_order[curr_num: curr_num + num_to_test]
-            curr_pos =  all_pos[curr_order]
+            curr_pos = all_pos[curr_order]
             print("Curr num", curr_num, "top k", len(top_k), self.k)
             if len(curr_pos) <= p.MAX_RAY_INTERSECTION_BATCH_SIZE:
                 collisions = list(p.rayTestBatch([eye_pos] * len(curr_pos), curr_pos))
@@ -292,7 +290,7 @@ class BaseRobotEnv(BaseEnv):
 
     # Gym v0.10.5 compatibility
     reset = _reset
-    step  = _step
+    step = _step
 
 
 class CameraRobotEnv(BaseRobotEnv):
@@ -306,7 +304,7 @@ class CameraRobotEnv(BaseRobotEnv):
 
         if self.gui:
             self.screen_arr = np.zeros([512, 512, 3])
-        
+
         self.test_env = "TEST_ENV" in os.environ.keys() and os.environ['TEST_ENV'] == "True"
         self._use_filler = config["use_filler"]
         self._require_camera_input = 'rgb_filled' in self.config["output"] or \
@@ -326,15 +324,14 @@ class CameraRobotEnv(BaseRobotEnv):
             assert self.config["semantic_source"] in [1, 2], "semantic_source not valid"
             assert self.config["semantic_color"] in [1, 2, 3], "semantic_source not valid"
             self._semantic_source = self.config["semantic_source"]
-            self._semantic_color  = self.config["semantic_color"]
+            self._semantic_color = self.config["semantic_color"]
         self._require_normal = 'normal' in self.config["output"]
 
         #if self._require_camera_input:
         self.model_path = get_model_path(self.model_id)
 
-        self.save_frame  = 0
+        self.save_frame = 0
         self.fps = 0
-
 
     def reset_observations(self):
         ## Initialize blank render image
@@ -354,10 +351,10 @@ class CameraRobotEnv(BaseRobotEnv):
     def setup_rendering_camera(self):
         if self.test_env:
             return
-        self.r_camera_rgb = None     ## Rendering engine
-        self.r_camera_mul = None     ## Multi channel rendering engine
+        self.r_camera_rgb = None  ## Rendering engine
+        self.r_camera_mul = None  ## Multi channel rendering engine
         self.r_camera_dep = None
-        #self.check_port_available()
+        # self.check_port_available()
 
         ui_map = {
             1: OneViewUI,
@@ -385,10 +382,8 @@ class CameraRobotEnv(BaseRobotEnv):
         self.potential = self.robot.calc_potential()
         eye_pos, eye_quat = self.get_eye_pos_orientation()
         pose = [eye_pos, eye_quat]
-        
         observations = self.render_observations(pose)
         return observations #, sensor_state
-
 
     def add_text(self, img):
         return img
@@ -409,7 +404,7 @@ class CameraRobotEnv(BaseRobotEnv):
         if self.gui:
             if self.config["display_ui"]:
                 self.render_to_UI()
-                print('render to ui')
+                #print('render to ui')
                 self.save_frame += 1
             elif self._require_camera_input:
                 # Use non-pygame GUI
@@ -424,8 +419,6 @@ class CameraRobotEnv(BaseRobotEnv):
         else:
             if self.config["show_diagnostics"] and self._require_rgb:
                 self.render_rgb_filled = self.add_text(self.render_rgb_filled)
-
-            robot_pos = self.robot.get_position()
             debugmode = 0
             if debugmode:
                 print("Eye position", sensor_meta['eye_pos'])
@@ -545,8 +538,8 @@ class CameraRobotEnv(BaseRobotEnv):
                 observations[output] = getattr(self, "render_" + output)
             except Exception as e:
                 raise Exception("Output component {} is not available".format(output))
-        
-        #visuals = np.concatenate(visuals, 2)
+
+        # visuals = np.concatenate(visuals, 2)
         return observations
 
     def setup_camera_pc(self):
@@ -554,17 +547,17 @@ class CameraRobotEnv(BaseRobotEnv):
         assert(self._require_camera_input)
         if self.scene_type == "building":
             self.dataset = ViewDataSet3D(
-                transform = np.array,
-                mist_transform = np.array,
-                seqlen = 2,
-                off_3d = False,
-                train = False,
-                overwrite_fofn=True, env = self, only_load = self.config["model_id"])
+                transform=np.array,
+                mist_transform=np.array,
+                seqlen=2,
+                off_3d=False,
+                train=False,
+                overwrite_fofn=True, env=self, only_load=self.config["model_id"])
 
         scene_dict = dict(zip(self.dataset.scenes, range(len(self.dataset.scenes))))
         ## Todo: (hzyjerry) more error handling
         if not self.model_id in scene_dict.keys():
-             raise error.Error("Dataset not found: model {} cannot be loaded".format(self.model_id))
+            raise error.Error("Dataset not found: model {} cannot be loaded".format(self.model_id))
         else:
             scene_id = scene_dict[self.model_id]
         uuids, rts = self.dataset.get_scene_info(scene_id)
@@ -584,15 +577,15 @@ class CameraRobotEnv(BaseRobotEnv):
 
                 if self.scale_up !=1:
                     target = cv2.resize(
-                        target,None,
-                        fx=1.0/self.scale_up,
-                        fy=1.0/self.scale_up,
-                        interpolation = cv2.INTER_CUBIC)
-                    target_depth =  cv2.resize(
+                        target, None,
+                        fx=1.0 / self.scale_up,
+                        fy=1.0 / self.scale_up,
+                        interpolation=cv2.INTER_CUBIC)
+                    target_depth = cv2.resize(
                         target_depth, None,
-                        fx=1.0/self.scale_up,
-                        fy=1.0/self.scale_up,
-                        interpolation = cv2.INTER_CUBIC)
+                        fx=1.0 / self.scale_up,
+                        fy=1.0 / self.scale_up,
+                        interpolation=cv2.INTER_CUBIC)
                 pose = data[-1][0].numpy()
                 targets.append(target)
                 poses.append(pose)
@@ -611,23 +604,23 @@ class CameraRobotEnv(BaseRobotEnv):
                 if self.scale_up !=1:
 
                     target = cv2.resize(
-                        target,None,
-                        fx=1.0/self.scale_up,
-                        fy=1.0/self.scale_up,
-                        interpolation = cv2.INTER_CUBIC)
-                    target_depth =  cv2.resize(
+                        target, None,
+                        fx=1.0 / self.scale_up,
+                        fy=1.0 / self.scale_up,
+                        interpolation=cv2.INTER_CUBIC)
+                    target_depth = cv2.resize(
                         target_depth, None,
-                        fx=1.0/self.scale_up,
-                        fy=1.0/self.scale_up,
-                        interpolation = cv2.INTER_CUBIC)
+                        fx=1.0 / self.scale_up,
+                        fy=1.0 / self.scale_up,
+                        interpolation=cv2.INTER_CUBIC)
                 pose = data[-1][0].numpy()
                 targets.append(target)
                 poses.append(pose)
                 sources.append(target)
-                source_depths.append(target_depth) 
-        
-        self.r_camera_rgb = PCRenderer(self.port_rgb, sources, source_depths, target, rts, 
-                                       scale_up=self.scale_up, 
+                source_depths.append(target_depth)
+
+        self.r_camera_rgb = PCRenderer(self.port_rgb, sources, source_depths, target, rts,
+                                       scale_up=self.scale_up,
                                        semantics=source_semantics,
                                        gui=self.gui, 
                                        use_filler=self._use_filler,  
@@ -694,7 +687,7 @@ class CameraRobotEnv(BaseRobotEnv):
                 raise error.Error("Gibson initialization Error: port {} is in use".format(port))
     # Gym v0.10.5 compatibility
     reset = _reset
-    step  = _step
+    step = _step
     close = _close
 
 
@@ -732,7 +725,7 @@ class SemanticRobotEnv(CameraRobotEnv):
         dr_path = osp.join(osp.dirname(osp.abspath(gibson.__file__)), 'core', 'channels', 'depth_render')
         cur_path = os.getcwd()
         os.chdir(dr_path)
-        load_semantic  = "./semantic --modelpath {} -r {} ".format(self.model_path, self._semantic_source)
+        load_semantic = "./semantic --modelpath {} -r {} ".format(self.model_path, self._semantic_source)
         self.semantic_server = subprocess.Popen(shlex.split(load_semantic), shell=False)
         os.chdir(cur_path)
 
@@ -751,10 +744,10 @@ class SemanticRobotEnv(CameraRobotEnv):
 
         self.semantic_pos = self.semantic_pos[semantic_ids, :]
 
-        debugmode=0
+        debugmode = 0
         if debugmode:
             self.semantic_pos = np.array([[0, 0, 0.2]])
-    
+
     def dist_to_semantic_pos(self):
         pos = self.robot.get_position()
         x, y, z, w = self.robot.get_orientation()
@@ -762,7 +755,7 @@ class SemanticRobotEnv(CameraRobotEnv):
         #print(pos, orn)
 
         diff_pos = self.semantic_pos - pos
-        dist_to_robot = np.sqrt(np.sum(diff_pos * diff_pos, axis = 1))
+        dist_to_robot = np.sqrt(np.sum(diff_pos * diff_pos, axis=1))
         diff_unit = (diff_pos.T / dist_to_robot).T
 
         #TODO: (hzyjerry) orientation is still buggy
@@ -770,7 +763,7 @@ class SemanticRobotEnv(CameraRobotEnv):
         orn_to_robot = np.arccos(diff_unit.dot(orn_unit))
         return dist_to_robot, orn_to_robot
 
-    def get_close_semantic_pos(self, dist_max=1.0, orn_max=np.pi/5):
+    def get_close_semantic_pos(self, dist_max=1.0, orn_max=np.pi / 5):
         '''Find the index of semantic positions close to the agent, within max
         distance and max orientation
         Return: list of index of the semantic positions, corresponding the index

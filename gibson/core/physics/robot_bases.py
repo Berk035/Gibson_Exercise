@@ -1,5 +1,4 @@
 ## Author: pybullet, Zhiyang He
-
 import pybullet as p
 import gym, gym.spaces, gym.utils
 import numpy as np
@@ -11,6 +10,7 @@ import pybullet_data
 from gibson import assets
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
+import pandas as ps
 
 
 def quatFromXYZW(xyzw, seq='xyzw'):
@@ -29,6 +29,21 @@ def quatToXYZW(orn, seq='xyzw'):
     inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
     return orn[inds]
 
+def load_waypoint():
+    """Loading 100 different waypoints from path plan file
+    """
+    z_offset = 0.3
+    df = ps.read_csv(currentdir + '/euharlee_waypoints.csv')
+    points = df.values
+    length = len(points)
+    sp = np.zeros((length, 3));  ang = np.zeros((length, 1));  gp = np.zeros((length, 3))
+    complexity = np.zeros((length,1))
+    for r in range(length):
+        sp[r] = np.array([points[r][2], points[r][3], points[r][4] + z_offset])
+        ang[r] = np.array([points[r][5]])
+        gp[r] = np.array([points[r][6], points[r][7], points[r][8] + z_offset])
+        complexity[r] = np.array([points[r][10] / points[r][9]])
+    return sp, gp, ang
 
 class BaseRobot:
     """
@@ -41,6 +56,13 @@ class BaseRobot:
         self.ordered_joints = None
         self.robot_body = None
 
+        self.initial_pos = None
+        self.initial_orn = None
+
+        if self.config["waypoint_active"]:
+            self.way_pos, self.way_target, self.way_orn = load_waypoint()
+            self.point = 0  # İstenilen waypoint noktasına erişimi sağlamak için.
+
         self.robot_ids = None
         self.model_file = model_file
         self.robot_name = robot_name
@@ -48,8 +70,8 @@ class BaseRobot:
         self.scale = scale
         self._load_model()
         self.eyes = self.parts["eyes"]
-        
         self.env = env
+        self.iter_so_far = 0
 
     def addToScene(self, bodies):
         if self.parts is not None:
@@ -119,15 +141,36 @@ class BaseRobot:
             self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling = self.scale), )
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
 
+
     def reset(self):
         if self.robot_ids is None:
             self._load_model()
-        
-        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
-        self.robot_body.reset_position(self.config["initial_pos"])
+
+        if self.config["waypoint_active"]:
+            self.initial_pos = self.way_pos[self.env.eps_count%len(self.way_pos)-1]
+            self.initial_orn = [0,0,float(self.way_orn[self.env.eps_count%len(self.way_pos)-1])]
+            self.target_pos = self.way_target[self.env.eps_count%len(self.way_pos)-1]
+            self.point = 0
+        else:
+            self.target_orn, self.target_pos    = self.config["target_orn"], self.config["target_pos"]
+            self.initial_orn, self.initial_pos  = self.config["initial_orn"], self.config["initial_pos"]
+
+        #TODO: Target position must be assign according to do way target!!!
+        '''Sırayla ulaşıldığı takdirde waypointlerden başlatıyor !!!'''
+        # if  self.initial_orn == None:
+        #     #self.initial_pos = self.config["initial_pos"]
+        #     #self.initial_orn = self.config["initial_orn"]
+        #     self.initial_pos = self.way_pos[0]
+        #     self.initial_orn = [0,0,float(self.way_orn[0])]
+        # else:
+        #     self.initial_pos = self.way_pos[self.point]
+        #     self.initial_orn[2] = float(self.way_orn[self.point])
+
+        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
+        self.robot_body.reset_position(self.initial_pos)
         self.reset_random_pos()
         self.robot_specific_reset()
-        
+
         state = self.calc_state()
         return state
 
@@ -140,24 +183,109 @@ class BaseRobot:
         pos = self.robot_body.get_position()
         orn = self.robot_body.get_orientation()
 
+        in_x = [-0.1, 0.1]; in_y = [-0.1, 0.1]; in_r = [-0.1, 0.1]
 
         x_range = self.config["random"]["random_init_x_range"]
         y_range = self.config["random"]["random_init_y_range"]
         z_range = self.config["random"]["random_init_z_range"]
         r_range = self.config["random"]["random_init_rot_range"]
 
+        if not (self.env.eps_count-1) % self.config['n_batch']:
+            if self.config["enjoy"]:
+                self.iter_so_far = 150
+            scale_fac=5
+            self.iter_so_far+=1
+            self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
+            self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
+            self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
+            #print("X_range:{}, Y_range:{}".format(x_range,y_range))
+
+
         new_pos = [ pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
                     pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
                     pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-        new_orn = quaternions.qmult(quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+
+
+        #WARNING: These lines are deprecated due to waypoints are loaded from file..
+        #All map constrain:
+        #new_pos[0] = np.clip(new_pos[0], -6, 0)
+        #new_pos[1] = np.clip(new_pos[1], -2, 10)
+
+        #Room 1 constraints for Aloha
+        #new_pos[0] = np.clip(new_pos[0], -5.75, -3)
+        #new_pos[1] = np.clip(new_pos[1], 4.5, 8.5)
+
+        #Room 2 constraints for Aloha
+        #new_pos[0] = np.clip(new_pos[0], -2, 0.5)
+        #new_pos[1] = np.clip(new_pos[1], 8.5, 10.25)
+
+        if new_pos[1] < (-2):
+            #Room 1 constraints for Euharlee
+            new_pos[0] = np.clip(new_pos[0], -2, 0.5)
+            new_pos[1] = np.clip(new_pos[1], -6.6, -5)
+            self.config["initial_orn"][2] = self.np_random.uniform(low=1.57,high=3.14)
+        elif new_pos[1] > (-2):
+            #Room 2 constraints for Euharlee
+            new_pos[0] = np.clip(new_pos[0], -2, 2)
+            new_pos[1] = np.clip(new_pos[1], 0, 3.5)
+            self.config["initial_orn"][2] = self.np_random.uniform(low=-3.14, high=-1.57)
+        else:
+            new_pos[0], new_pos[1], _ = self.config["initial_pos"]
+
+        if r_range[1] > 0.5:
+            r_range[0] = np.clip(r_range[0], -0.5, 0)
+            r_range[1] = np.clip(r_range[1], 0, 0.5)
+
+        '''if new_pos[0] > -8 and new_pos[0] < -5:
+                   #Room 1 constraints for Howie
+                   new_pos[0] = np.clip(new_pos[0], -8, -5)
+                   new_pos[1] = np.clip(new_pos[1], 0.5, 2)
+               elif new_pos[0] > -2 and new_pos[0] < 2:
+                   #Room 2 constraints for Howie
+                   new_pos[0] = np.clip(new_pos[0], -2, 2)
+                   new_pos[1] = np.clip(new_pos[1], -1, 2)
+               else:
+                   new_pos[0] = np.clip(new_pos[0], -8, 2)
+                   new_pos[1] = np.clip(new_pos[1], 1, 1.5)
+               '''
+
+        #print("X_range:{}, Y_range:{}, new_Pose:{}".format(x_range, y_range, new_pos))
+        #print("Iteration:", self.iter_so_far)
+        #print("r_range:{}".format(r_range))
+
+        new_orn = quaternions.qmult(
+            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
 
         self.robot_body.reset_orientation(new_orn)
         self.robot_body.reset_position(new_pos)
 
-
     def reset_new_pose(self, pos, orn):
         self.robot_body.reset_orientation(orn)
         self.robot_body.reset_position(pos)        
+
+    def reset_random_target(self):
+        '''
+        Reposition target randomness
+        '''
+        if not self.config["random"]["random_target_pose"]:
+            return
+
+        pos = self.config["target_pos"]
+        orn = self.config["target_orn"]
+
+        x_range = self.config["random"]["random_init_x_range"]
+        y_range = self.config["random"]["random_init_y_range"]
+        z_range = self.config["random"]["random_init_z_range"]
+        r_range = self.config["random"]["random_init_rot_range"]
+
+        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
+                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
+                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
+        new_orn = quaternions.qmult(
+            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+
+        self.config["target_pos"] = new_pos
+        self.config["target_orn"] = new_orn
 
     def calc_potential(self):
         return 0
@@ -329,9 +457,11 @@ class Joint:
         if self.jointType == p.JOINT_PRISMATIC:
             velocity = np.array(velocity) / self.scale
         p.setJointMotorControl2(self.bodies[self.bodyIndex],self.jointIndex,p.VELOCITY_CONTROL, targetVelocity=velocity) # , positionGain=0.1, velocityGain=0.1)
+        #print("Velocity = %.2f" %velocity)
 
     def set_torque(self, torque):
-        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex, controlMode=p.TORQUE_CONTROL, force=torque) #, positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex,
+                                controlMode=p.TORQUE_CONTROL, force=torque)  # , positionGain=0.1, velocityGain=0.1)
 
     def reset_state(self, pos, vel):
         self.set_state(pos, vel)

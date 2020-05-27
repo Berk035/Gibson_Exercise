@@ -38,8 +38,8 @@ class BaseEnv(gym.Env):
         self.resolution = config["resolution"]
         self.tracking_camera = tracking_camera
         self.robot = None
-        target_orn, target_pos   = config["target_orn"], self.config["target_pos"]
-        initial_orn, initial_pos = config["initial_orn"], self.config["initial_pos"]
+        #target_orn, target_pos   = config["target_orn"], config["target_pos"]
+        #initial_orn, initial_pos = config["initial_orn"], config["initial_pos"]
 
         if config["display_ui"]:
             #self.physicsClientId = p.connect(p.DIRECT)
@@ -95,7 +95,7 @@ class BaseEnv(gym.Env):
         assert self.robot is not None, "Pleases introduce robot to environment before resetting."
         p.configureDebugVisualizer(p.COV_ENABLE_GUI,0)
         p.configureDebugVisualizer(p.COV_ENABLE_KEYBOARD_SHORTCUTS, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 1)
+        p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
 
@@ -212,6 +212,7 @@ class BaseEnv(gym.Env):
 
 class Camera:
     def __init__(self):
+        #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "GUI_VID.mp4")
         pass
 
     def move_and_look_at(self,i,j,k,x,y,z):

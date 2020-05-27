@@ -93,7 +93,8 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
         elif hasattr(env.unwrapped, 'get_keys_to_action'):
             keys_to_action = env.unwrapped.get_keys_to_action()
     relevant_keys = set(sum(map(list, keys_to_action.keys()),[]))
-    
+
+    #A=97 D=100 S=115 W=119 ASCII Codes
     pressed_keys = []
     running = True
     env_done = True
@@ -111,25 +112,27 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
             continue
         if len(pressed_keys) == 0:
             action = keys_to_action[()]
-            with Profiler("Play Env: step"):
-                start = time.time()
-                obs, rew, env_done, info = env.step(action)
-                record_total += time.time() - start
-                record_num += 1
+            #with Profiler("Play Env: step"):
+            #with Profiler(""):
+            start = time.time()
+            obs, rew, env_done, info = env.step(action)
+            record_total += time.time() - start
+            record_num += 1
             #print(info['sensor'])
-            print("Play mode: reward %f" % rew)
+            #print("Play mode: reward %f" % rew)
         for p_key in pressed_keys:
             action = keys_to_action[(p_key, )]
             prev_obs = obs
-            with Profiler("Play Env: step"):
-                start = time.time()
-                obs, rew, env_done, info = env.step(action)
-                record_total += time.time() - start
-                record_num += 1
-            print("Play mode: reward %f" % rew)
+            #with Profiler("Play Env: step"):
+            #with Profiler(""):
+            start = time.time()
+            obs, rew, env_done, info = env.step(action)
+            record_total += time.time() - start
+            record_num += 1
+            #print("Play mode: reward %f" % rew)
         if callback is not None:
             callback(prev_obs, obs, action, rew, env_done, info)
-        # process pygame events
+        #process pygame events
         key_codes = env.get_key_pressed(relevant_keys)
         #print("Key codes", key_codes)
         pressed_keys = []
@@ -150,7 +153,9 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
             pressed_keys.append(key) 
             
         last_keys = key_codes
-        
+
+        if env_done:
+            env.reset()
 
 class PlayPlot(object):
     def __init__(self, callback, horizon_timesteps, plot_names):

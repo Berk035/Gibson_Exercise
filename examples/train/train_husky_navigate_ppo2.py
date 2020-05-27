@@ -59,32 +59,19 @@ def train(num_timesteps, seed):
     gym.logger.setLevel(logging.WARN)
 
     policy_fn = MlpPolicy if args.mode == "SENSOR" else CnnPolicy2
+    args.reload_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'gibson', 'utils', 'models', '00100')
 
-    ppo2.learn(policy=policy_fn, env=env, nsteps=3000, nminibatches=4,
+    ppo2.learn(policy=policy_fn, env=env, nsteps=500, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=4, log_interval=1,
         ent_coef=.1,
         lr=lambda f : f * 2e-4,
         cliprange=lambda f : f * 0.2,
         total_timesteps=int(num_timesteps * 1.1),
-        save_interval=5,
+        save_interval=10,
         sensor= args.mode == "SENSOR",
         reload_name=args.reload_name)
-    
-    '''
-    pposgd_fuse.learn(env, policy_fn,
-        max_timesteps=int(num_timesteps * 1.1),
-        timesteps_per_actorbatch=1024,
-        clip_param=0.2, entcoeff=0.0001,
-        optim_epochs=10, optim_stepsize=3e-6, optim_batchsize=64,
-        gamma=0.995, lam=0.95,
-        schedule='linear',
-        save_name=args.save_name,
-        save_per_acts=10000,
-        reload_name=args.reload_name
-    )
 
     env.close()
-    '''
 
 def callback(lcl, glb):
     # stop training if reward exceeds 199
@@ -95,7 +82,7 @@ def callback(lcl, glb):
 
 
 def main():
-    train(num_timesteps=10000000, seed=5)
+    train(num_timesteps=90000, seed=5)
 
 if __name__ == '__main__':
     import argparse

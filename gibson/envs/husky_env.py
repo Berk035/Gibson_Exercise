@@ -1,4 +1,4 @@
-from gibson.envs.env_modalities import CameraRobotEnv, BaseRobotEnv, SemanticRobotEnv
+from gibson.envs.env_mod_2 import CameraRobotEnv, BaseRobotEnv, SemanticRobotEnv
 from gibson.envs.env_bases import *
 from gibson.core.physics.robot_locomotors import Husky
 from transforms3d import quaternions
@@ -10,7 +10,9 @@ from gibson.core.physics.scene_stadium import SinglePlayerStadiumScene
 import pybullet_data
 import cv2
 
-CALC_OBSTACLE_PENALTY = 0
+FLAG_LIMIT = 3000
+CALC_OBSTACLE_PENALTY = 1
+CALC_GEODESIC_REW = 0
 
 tracking_camera = {
     'yaw': 110,
@@ -41,15 +43,25 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.scene_introduce()
         self.total_reward = 0
         self.total_frame = 0
+        self.eps_so_far = 0
+        self.hold_rew = 0
+
+        self.position = np.zeros(3); self.old_pos = np.zeros(3)
+        self.shortest_path = np.linalg.norm([np.array(self.config["target_pos"])
+                                             -np.array(self.config["initial_pos"])])
+        self.actual_path = -5 #Offset for beggining
 
     def add_text(self, img):
         font = cv2.FONT_HERSHEY_SIMPLEX
-        x,y,z = self.robot.get_position()
-        r,p,ya = self.robot.get_rpy()
-        cv2.putText(img, 'x:{0:.4f} y:{1:.4f} z:{2:.4f}'.format(x,y,z), (10, 20), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        #font = cv2.FONT_HERSHEY_PLAIN
+        #x,y,z = self.robot.get_position()
+        #r,p,ya = self.robot.get_rpy()
+
+        cv2.putText(img, 'Reward:{0:.3f}'.format(self.hold_rew), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'x:{0:.2f} y:{1:.2f} z:{2:.2f}'.format(x,y,z), (10, 100), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
         return img
 
     def _rewards(self, action=None, debugmode=False):
@@ -58,85 +70,110 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.potential = self.robot.calc_potential()
         progress = float(self.potential - potential_old)
 
-        feet_collision_cost = 0.0
-        for i, f in enumerate(
-                self.robot.feet):  # TODO: Maybe calculating feet contacts could be done within the robot code
-            contact_ids = set((x[2], x[4]) for x in f.contact_list())
-            #contact_ids = set([x[2] for x in f.contact_list()])
-            if (self.ground_ids & contact_ids):
-                # see Issue 63: https://github.com/openai/roboschool/issues/63
-                # feet_collision_cost += self.foot_collision_cost
-                self.robot.feet_contact[i] = 1.0
-            else:
-                self.robot.feet_contact[i] = 0.0
-        
-        electricity_cost  = self.electricity_cost  * float(np.abs(a*self.robot.joint_speeds).mean())
-        electricity_cost  += self.stall_torque_cost * float(np.square(a).mean())
-
-
-        steering_cost = self.robot.steering_cost(a)
-        debugmode = 0
-        if debugmode:
-            print("steering cost", steering_cost)
-
         wall_contact = []
-        
         for i, f in enumerate(self.parts):
             if self.parts[f] not in self.robot.feet:
                 wall_contact += [pt for pt in self.robot.parts[f].contact_list() if pt[6][2] > 0.15]
-        debugmode = 0
-        if debugmode:
-            print("Husky wall contact:", len(wall_contact))
         wall_collision_cost = self.wall_collision_cost * len(wall_contact)
 
         joints_at_limit_cost = float(self.joints_at_limit_cost * self.robot.joints_at_limit)
-        close_to_target = 0
+        #joints_at_limit_cost = 0
 
-        if self.robot.dist_to_target() < 2:
+        self.old_pos = self.position
+        self.position = self.robot.get_position()
+        displacement = np.linalg.norm([self.position[1]-self.old_pos[1],self.position[0]-self.old_pos[0]])
+        self.actual_path += displacement
+
+        close_to_target = 0; success = 0; SPL=0
+        dist = self.robot.dist_to_target()
+        path_ratio = (self.shortest_path/np.max([self.actual_path,self.shortest_path]))
+
+        #x_tar, y_tar, z_tar = self.robot.target_pos
+        if dist <= 0.5:
             close_to_target = 0.5
+            success=1
 
+        SPL = success * path_ratio
+        steering_cost = self.robot.steering_cost(a)
         angle_cost = self.robot.angle_cost()
+        feet_collision_cost = self.robot.feet_col(self.ground_ids,self.foot_collision_cost)
 
-        obstacle_penalty = 0
+        obstacle_penalty = 1
         if CALC_OBSTACLE_PENALTY and self._require_camera_input:
             obstacle_penalty = get_obstacle_penalty(self.robot, self.render_depth)
 
-        debugmode = 0
-        if debugmode:
-            print("angle cost", angle_cost)
-
-        height = self.robot.get_position()[2]
-        pitch = self.robot.get_rpy()[1]
+        roll, pitch, yaw = self.robot.get_rpy()
+        #(vx,vy,vz) = self.robot.get_velocity()
+        height = self.position[2]
         alive = float(self.robot.alive_bonus(height, pitch))
-        
-        debugmode = 0
-        if (debugmode):
-            #print("Wall contact points", len(wall_contact))
-            print("Collision cost", wall_collision_cost)
-            #print("electricity_cost", electricity_cost)
-            print("close to target", close_to_target)
-            print("Obstacle penalty", obstacle_penalty)
-            print("Steering cost", steering_cost)
-            print("progress", progress)
-            #print("electricity_cost")
-            #print(electricity_cost)
-            #print("joints_at_limit_cost")
-            #print(joints_at_limit_cost)
-            #print("feet_collision_cost")
-            #print(feet_collision_cost)
 
         rewards = [
-            #alive,
-            progress,
-            wall_collision_cost,
-            close_to_target,
-            steering_cost,
-            #angle_cost,
-            #obstacle_penalty
-            #electricity_cost,
-            #joints_at_limit_cost,
-            #feet_collision_cost
+            #WARNING:all rewards have rew/frame units and close to 1.0
+            alive, #It has 1 or 0 values
+            progress, #It calculates between two frame for target distance
+            close_to_target, #It returns reward step by step between 0.25~0.75
+            angle_cost,  # It has -0.6~0 values for tend to target
+            wall_collision_cost, #It  has 0.3~0.1 values edit:0.5
+            steering_cost, #It has -0.1 values when the agent turns
+            obstacle_penalty, #TODO: Aldığı değerlerin etkisi çok düşük
+            #SPL #Success weighted by path length
+            #feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
+            #joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
+
+        #Episode Recording
+        record = 1
+        if record:
+            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards"
+            try:
+                os.mkdir(file_path)
+            except OSError:
+                pass
+
+            if self.nframe == 1:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards/positions" +
+                              "_" + str(self.eps_count) + ".txt", "w")
+            else:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards/positions" +
+                              "_" + str(self.eps_count) + ".txt", "a")
+            ep_pos.write("%i;%.3f" % (self.nframe, path_ratio) + "\n")
+            ep_pos.close()
+
+        '''img_depth = self.add_text(self.render_depth)
+        path="/home/berk/PycharmProjects/Gibson_Exercise/examples/train/output_frames"
+        try:
+            os.mkdir(path)
+        except OSError:
+            pass
+        cv2.imshow('Depth', img_depth)
+        cv2.waitKey(1)
+        cv2.imwrite(os.path.join(path, 'FRAME_%i.jpg') %self.nframe, img_depth)'''
+
+        debugmode = 0
+        if (debugmode):
+            print("------------------------")
+            #print("Episode Frame: {}".format(self.nframe))
+            #print("Target Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x_tar,y_tar,z_tar))
+            print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
+            #print(self.robot.geo_dist_target([2,1],[1,1]))
+            print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            #print("Velocity: x={:.3f}, y={:.3f}, z={:.3f}".format(vx, vy, vz))
+            #print("Progress: {:.3f}".format(progress))
+            #print("Steering cost: {:.3f}" .format(steering_cost))
+            #print("Angle Cost: {:.3f}".format(angle_cost))
+            #print("Joints_at_limit_cost: {:.3f}" .format(joints_at_limit_cost))
+            #print("Feet_collision_cost: {:.3f}" .format(feet_collision_cost))
+            #print("Wall contact points: {:.3f}" .format(len(wall_contact)))
+            #print("Collision cost: {:.3f}" .format(wall_collision_cost))
+            #print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
+            #print("Close to target: {:.2f}".format(close_to_target))
+            #print("SPL: %.3f" % SPL)
+            #print("ACTUAL:%.2f\t"%self.actual_path + str("SHORTEST:%.2f"%self.shortest_path))
+            #print("Rewards: {:.3f} " .format(sum(rewards)))
+            #print("Total Eps Rewards: {:.3f} ".format(self.eps_reward))
+            #print("-----------------------")
+
+        self.hold_rew = sum(rewards)
         return rewards
 
     def _termination(self, debugmode=False):
@@ -145,9 +182,19 @@ class HuskyNavigateEnv(CameraRobotEnv):
         alive = float(self.robot.alive_bonus(height, pitch)) > 0
         #alive = len(self.robot.parts['top_bumper_link'].contact_list()) == 0
 
-        done = not alive or self.nframe > 250 or height < 0
-        #if done:
-        #    print("Episode reset")
+        done = not alive or self.nframe > (self.config['n_step']-1) or height < 0
+        #done = not alive or self.nframe > (self.config['n_step']-1) or height < 0 or self.robot.dist_to_target() <= 0.2
+        if done:
+            self.eps_so_far += 1
+            self.actual_path = 0
+            self.old_pos = np.zeros(3)
+            #print("Episodes ---------------> %i / %s" % (self.eps_so_far + 1, str(self.config["n_batch"])))
+            debugmode=0
+            if debugmode:
+                    CRED = '\033[91m'
+                    CEND = '\033[0m'
+                    print(CRED+"Episode reset!"+CEND)
+
         return done
 
     def _flag_reposition(self):
@@ -155,8 +202,11 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         self.flag = None
         if self.gui and not self.config["display_ui"]:
-            self.visual_flagId = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
-            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1, basePosition=[target_pos[0], target_pos[1], 0.5])
+            self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
+                                                     fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
+                                                     meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
+            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1,
+                                                 basePosition=[target_pos[0], target_pos[1], 0.5])
 
     def  _reset(self):
         self.total_frame = 0
@@ -173,6 +223,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
 class HuskyNavigateSpeedControlEnv(HuskyNavigateEnv):
     """Specfy navigation reward
     """
+
     def __init__(self, config, gpu_idx=0):
         #assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
         HuskyNavigateEnv.__init__(self, config, gpu_idx)
@@ -230,6 +281,7 @@ class HuskyNavigateSpeedControlEnv(HuskyNavigateEnv):
 class HuskyGibsonFlagRunEnv(CameraRobotEnv):
     """Specfy flagrun reward
     """
+
     def __init__(self, config, gpu_idx=0):
         self.config = self.parse_config(config)
         print(self.config["envname"])
@@ -241,20 +293,27 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         self.robot_introduce(Husky(self.config, env=self))
         self.scene_introduce()
 
+        #WARNING: While debugging mode, it must be pass directly!!
+
         self.total_reward = 0
         self.total_frame = 0
         self.flag_timeout = 1
         self.visualid = -1
         self.lastid = None
         self.gui = self.config["mode"] == "gui"
-        
+        self.waypoint = 0
+
         if self.gui:
-            self.visualid = p.createVisualShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2], rgbaColor=[1, 0, 0, 0.7])
-        self.colisionid = p.createCollisionShape(p.GEOM_MESH, fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'), meshScale=[0.2, 0.2, 0.2])
+            self.visualid = p.createVisualShape(p.GEOM_MESH,
+                                                fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
+                                                meshScale=[0.2, 0.2, 0.2], rgbaColor=[1, 0, 0, 0.7])
+        self.colisionid = p.createCollisionShape(p.GEOM_MESH,
+                                                 fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
+                                                 meshScale=[0.2, 0.2, 0.2])
 
         self.lastid = None
         self.obstacle_dist = 100
-        
+
     def _reset(self):
         obs = CameraRobotEnv._reset(self)
         return obs
@@ -264,14 +323,18 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         #                                            high=+self.scene.stadium_halflen)
         #self.walk_target_y = self.np_random.uniform(low=-self.scene.stadium_halfwidth,
         #                                            high=+self.scene.stadium_halfwidth)
-        force_x = self.np_random.uniform(-300,300)
-        force_y = self.np_random.uniform(-300, 300)
+        force_x = self.np_random.uniform(-150, 150)
+        force_y = self.np_random.uniform(-150, 150)
 
-        more_compact = 0.5  # set to 1.0 whole football field
+        #x_range = [-2.0,2.0]
+        #y_range = [-2.0,2.0]
+        #z_range = [0,0]
+        #more_compact = 0.5  # set to 1.0 whole football field
         #self.walk_target_x *= more_compact
         #self.walk_target_y *= more_compact
 
         startx, starty, _ = self.robot.get_position()
+
 
 
         self.flag = None
@@ -283,10 +346,47 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
             p.removeBody(self.lastid)
 
         self.lastid = p.createMultiBody(baseMass = 1, baseVisualShapeIndex=self.visualid, baseCollisionShapeIndex=self.colisionid, basePosition=[startx, starty, 0.5])
-        p.applyExternalForce(self.lastid, -1, [force_x,force_y,50], [0,0,0], p.LINK_FRAME)
+        #p.applyExternalForce(self.lastid, -1, [force_x,force_y,50], [0,0,0], p.LINK_FRAME)
+        _, orn = p.getBasePositionAndOrientation(self.lastid)
 
+        p.resetBasePositionAndOrientation(self.lastid, [-3.883, 0.993, 0.5], orn)
+        if self.waypoint == 1:
+            p.resetBasePositionAndOrientation(self.lastid, [-3.5, -1, 0.5], orn)
+
+        '''
+        force_x = self.np_random.uniform(-300, 300)
+        force_y = self.np_random.uniform(-300, 300)
+        p.applyExternalForce(self.lastid, -1, [force_x, force_y, 25], [0, 0, 0], p.LINK_FRAME)
+        
+
+        pos = self.robot.get_position()
+        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
+                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
+                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
+
+        self.lastid = p.createMultiBody(baseMass=1, baseVisualShapeIndex=self.visualid,
+                                        baseCollisionShapeIndex=self.colisionid,
+                                        basePosition=[new_pos[0], new_pos[1], new_pos[2]])
+        '''
+
+        '''self.lastid = p.createMultiBody(baseMass=1, baseVisualShapeIndex=self.visualid,
+                                        baseCollisionShapeIndex=self.colisionid,
+                                        basePosition=[-3.883, 0.993, 0.5])'''
+
+        #self.lastid = p.createMultiBody(baseMass=1, baseVisualShapeIndex=self.visualid,
+        #                                baseCollisionShapeIndex=self.colisionid,
+         #                               basePosition=[startx, starty, 0.5])
+
+        '''if self.waypoint == 1:
+            self.lastid = p.createMultiBody(baseMass=1, baseVisualShapeIndex=self.visualid,
+                                            baseCollisionShapeIndex=self.colisionid,
+                                            basePosition=[-3.5, -1, 0.5])'''
+
+
+        #ball_xyz, _ = p.resetBasePositionAndOrientation(self.lastid,new_pos,orn)
         ball_xyz, _ = p.getBasePositionAndOrientation(self.lastid)
 
+        #self.robot.set_target_position(ball_xyz)
         self.robot.walk_target_x = ball_xyz[0]
         self.robot.walk_target_y = ball_xyz[1]
 
@@ -294,17 +394,15 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         a = action
         potential_old = self.potential
         self.potential = self.robot.calc_potential()
-        if self.flag_timeout > 225:
+
+
+        if self.flag_timeout > FLAG_LIMIT: #Is it time required for being cube is totally placed to env?
             progress = 0
         else:
             progress = float(self.potential - potential_old)
 
-        if not a is None:
-            electricity_cost = self.electricity_cost * float(np.abs(
-                a * self.robot.joint_speeds).mean())  # let's assume we have DC motor with controller, and reverse current braking
-            electricity_cost += self.stall_torque_cost * float(np.square(a).mean())
-        else:
-            electricity_cost = 0
+        #prog_scale = 5
+        #progress = prog_scale * float(self.potential - potential_old)
 
         alive = len(self.robot.parts['top_bumper_link'].contact_list())
         if alive == 0:
@@ -312,57 +410,84 @@ class HuskyGibsonFlagRunEnv(CameraRobotEnv):
         else:
             alive_score = -0.1
 
-        joints_at_limit_cost = float(self.joints_at_limit_cost * self.robot.joints_at_limit)
-        debugmode = 0
-        if (debugmode):
-            print("progress")
-            print(progress)
+        wall_contact = []
+        for i, f in enumerate(self.parts):
+            if self.parts[f] not in self.robot.feet:
+                wall_contact += [pt for pt in self.robot.parts[f].contact_list() if pt[6][2] > 0.15]
+        wall_collision_cost = self.wall_collision_cost * len(wall_contact)
+
+        close_target = 0
+        if self.robot.walk_target_dist < 0.8:
+            close_target = 0.5
 
         obstacle_penalty = 0
-
-        #print("obs dist %.3f" %self.obstacle_dist)
         if self.obstacle_dist < 0.7:
             obstacle_penalty = self.obstacle_dist - 0.7
+
+        #print("Obs dist: %.3f, Obs Pen: %.3f" % (self.obstacle_dist, obstacle_penalty))
+
+        '''
+        obstacle_penalty = 0
+        if CALC_OBSTACLE_PENALTY and self._require_camera_input:
+            obstacle_penalty = get_obstacle_penalty(self.robot, self.render_depth)
+        '''
 
         rewards = [
             alive_score,
             progress,
-            obstacle_penalty
+            obstacle_penalty,
+            #wall_collision_cost,
+            #close_target
         ]
         return rewards
 
     def _termination(self, debugmode=False):
         alive = len(self.robot.parts['top_bumper_link'].contact_list())
-        done = alive > 0 or self.nframe > 500
+        done = alive > 0 or self.nframe > self.config['n_step']
         if (debugmode):
             print("alive=")
             print(alive)
-        print(len(self.robot.parts['top_bumper_link'].contact_list()), self.nframe, done)
+        #print(len(self.robot.parts['top_bumper_link'].contact_list()), self.nframe, done)
+        self.waypoint = 0
         return done
 
     def _step(self, a):
         state, reward, done, meta = CameraRobotEnv._step(self, a)
-        if self.flag_timeout <= 0 or (self.flag_timeout < 225 and self.robot.walk_target_dist < 0.8):
+        if self.flag_timeout <= 0 or (self.flag_timeout < 225 and self.robot.walk_target_dist < 0.4):
+            if self.robot.walk_target_dist < 0.4:
+                self.waypoint = 1
             self._flag_reposition()
         self.flag_timeout -= 1
 
+        depth_size=16
         if "depth" in self.config["output"]:
             depth_obs = self.get_observations()["depth"]
-            x_start = int(self.windowsz/2-16)
-            x_end   = int(self.windowsz/2+16)
-            y_start = int(self.windowsz/2-16)
-            y_end   = int(self.windowsz/2+16)
+            x_start = int(self.windowsz / 2 - depth_size)
+            x_end = int(self.windowsz / 2 + depth_size)
+            y_start = int(self.windowsz / 2 - depth_size)
+            y_end = int(self.windowsz / 2 + depth_size)
             self.obstacle_dist = (np.mean(depth_obs[x_start:x_end, y_start:y_end, -1]))
+
+        #state, reward, done, meta = CameraRobotEnv._step(self, a)
+        #if self.flag_timeout <= 0 or (self.flag_timeout < FLAG_LIMIT and self.robot.walk_target_dist < 0.8):
+        #    self._flag_reposition()
+        #self.flag_timeout -= 1
+
+        debug=0
+        if debug:
+            print("Frame: {}, FlagTimeOut: {}, Reward: {:.3f}, Distance: {:.3f}, "
+                  .format(self.nframe,self.flag_timeout, reward, self.robot.walk_target_dist),done)
 
         return state, reward, done, meta
 
     ## openai-gym v0.10.5 compatibility
-    step  = _step
+    step = _step
 
 
 class HuskySemanticNavigateEnv(SemanticRobotEnv):
     """Specfy navigation reward
     """
+
     def __init__(self, config, gpu_idx=0):
         #assert(self.config["envname"] == self.__class__.__name__ or self.config["envname"] == "TestEnv")
         self.config = self.parse_config(config)
@@ -405,7 +530,7 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
             p.changeVisualShape(flagId, -1, rgbaColor=[0, 1, 0, 1])
         return obs,rew,env_done,info
 
-    def _rewards(self, action = None, debugmode=False):
+    def _rewards(self, action=None, debugmode=False):
         a = action
         potential_old = self.potential
         self.potential = self.robot.calc_potential()
@@ -448,7 +573,7 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
 
     def _termination(self, debugmode=False):
         alive = len(self.robot.parts['top_bumper_link'].contact_list())
-        done = alive > 0 or self.nframe > 500
+        done = alive > 0 or self.nframe > (self.config['n_step']-1)
         if (debugmode):
             print("alive=")
             print(alive)
@@ -464,18 +589,39 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
 def get_obstacle_penalty(robot, depth):
     screen_sz = robot.obs_dim[0]
     screen_delta = int(screen_sz / 8)
-    screen_half  = int(screen_sz / 2)
+    screen_half = int(screen_sz / 2)
     height_offset = int(screen_sz / 4)
 
-    obstacle_dist = (np.mean(depth[screen_half  + height_offset - screen_delta : screen_half + height_offset + screen_delta, screen_half - screen_delta : screen_half + screen_delta, -1]))
+    #obstacle_dist = (np.mean(depth))
+    obstacle_dist = (np.mean(depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
+                    screen_half - screen_delta: screen_half + screen_delta, -1]))
+
     obstacle_penalty = 0
     OBSTACLE_LIMIT = 1.5
     if obstacle_dist < OBSTACLE_LIMIT:
-       obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
-    
+        obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
+
+
     debugmode = 0
     if debugmode:
-        #print("Obstacle screen", screen_sz, screen_delta)
-        print("Obstacle distance", obstacle_dist)
-        print("Obstacle penalty", obstacle_penalty)
+        print("Obstacle screen", screen_sz, screen_delta)
+        print("Obstacle distance: {:.3f}".format(obstacle_dist))
+        print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
+
+        path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/frame_penalty"
+        try:
+            os.mkdir(path)
+        except OSError:
+            pass
+
+        clip = depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
+                   screen_half - screen_delta: screen_half + screen_delta, -1]
+        width, height = int(depth.shape[0]), int(depth.shape[1])
+        dim = (width, height)
+
+        #resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
+        #cv2.imwrite(os.path.join(path, 'Frame_Dist_Penalty_{:.3g}-{:.3g}.jpg') .format(obstacle_dist,obstacle_penalty), resized_clip)
+        depth = cv2.convertScaleAbs(depth, alpha=(255.0))
+        cv2.imwrite(os.path.join(path, 'Frame_Dist_Penalty_{:.3g}-{:.3g}.jpg').format(obstacle_dist, obstacle_penalty), depth)
+
     return obstacle_penalty

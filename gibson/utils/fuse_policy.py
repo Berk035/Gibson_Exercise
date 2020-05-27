@@ -10,16 +10,16 @@ import sys
 class FusePolicy(object):
     recurrent = False
 
-    def __init__(self, name, ob_space, sensor_space, ac_space, session, hid_size, num_hid_layers, save_per_acts=None, kind='large'):
+    def __init__(self, name, ob_space, sensor_space, ac_space, session, hid_size, num_hid_layers, save_per_acts=None, kind='large', elm_mode=False):
         self.total_count = 0
         self.curr_count = 0
         self.save_per_acts = save_per_acts
         self.session = session
         with tf.variable_scope(name):
-            self._init(ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind)
+            self._init(ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind, elm_mode)
             self.scope = tf.get_variable_scope().name
 
-    def _init(self, ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind):
+    def _init(self, ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind, elm_mode):
         assert isinstance(ob_space, gym.spaces.Box)
         assert isinstance(sensor_space, gym.spaces.Box)
 
@@ -32,19 +32,6 @@ class FusePolicy(object):
         ## Obfilter on sensor output
         with tf.variable_scope("obfilter"):
             self.ob_rms = RunningMeanStd(shape=sensor_space.shape)
-
-        obz_sensor = tf.clip_by_value((ob_sensor - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
-        #x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
-
-        ## Adapted from mlp_policy
-        last_out = obz_sensor
-        for i in range(num_hid_layers):
-            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
-        y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
-
-        #y = ob_sensor
-        #y = obz_sensor
-        #y = tf.nn.relu(U.dense(y, 64, 'lin_ob', U.normc_initializer(1.0)))
 
         x = ob / 255.0
         if kind == 'small':  # from A3C paper
@@ -61,17 +48,33 @@ class FusePolicy(object):
         else:
             raise NotImplementedError
 
-        print(x.shape, y.shape)
-        x = tf.concat([x,y], 1)
+        obz_sensor = tf.clip_by_value((ob_sensor - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
+        #x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+
+        last_out = obz_sensor
+        if not elm_mode:
+            ## Adapted from mlp_policy
+            for i in range(num_hid_layers):
+                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i" % (i + 1),
+                                                  kernel_initializer=U.normc_initializer(1.0)))
+            y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
+        else:
+            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(1),
+                                                  kernel_initializer=U.normc_initializer(1.0), trainable=False))
+            y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
+
+        #y = ob_sensor
+        #y = obz_sensor
+        #y = tf.nn.relu(U.dense(y, 64, 'lin_ob', U.normc_initializer(1.0)))
 
         ## Saver
         # self.saver = tf.train.Saver()
-
-
+        x = tf.concat([x, y], 1)
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
         self.vpred = tf.layers.dense(x, 1, name="value", kernel_initializer=U.normc_initializer(1.0))[:, 0]
 
+        #self.session.run(logits.kernel)
         self.state_in = []
         self.state_out = []
 

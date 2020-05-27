@@ -12,7 +12,7 @@ class MlpPolicy(object):
             self._init(*args, **kwargs)
             self.scope = tf.get_variable_scope().name
 
-    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True):
+    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True, elm_mode=False):
         
         assert isinstance(ob_space, gym.spaces.Box)
 
@@ -26,13 +26,20 @@ class MlpPolicy(object):
 
         obz = tf.clip_by_value((ob - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
         last_out = obz
-        for i in range(num_hid_layers):
-            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
+        if not elm_mode:
+            for i in range(num_hid_layers):
+                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
+        else:
+            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(1), kernel_initializer=U.normc_initializer(1.0), trainable=False))
         self.vpred = tf.layers.dense(last_out, 1, name="vffinal", kernel_initializer=U.normc_initializer(1.0))[:,0]
         
         last_out = obz
-        for i in range(num_hid_layers):
-            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="polfc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
+        if not elm_mode:
+            for i in range(num_hid_layers):
+                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="polfc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
+        else:
+            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="polfc%i"%(1), kernel_initializer=U.normc_initializer(1.0), trainable=False))
+
         if gaussian_fixed_var and isinstance(ac_space, gym.spaces.Box):
             mean = tf.layers.dense(last_out, pdtype.param_shape()[0]//2, name="polfinal", kernel_initializer=U.normc_initializer(0.01))
             logstd = tf.get_variable(name="logstd", shape=[1, pdtype.param_shape()[0]//2], initializer=tf.zeros_initializer())

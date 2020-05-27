@@ -8,12 +8,12 @@ from baselines.common.mpi_moments import mpi_moments
 from mpi4py import MPI
 from collections import deque
 from gibson.core.render.profiler import Profiler
-
 import os
 import tempfile
 import cloudpickle
 import zipfile
-
+#from gibson.envs.husky_env import HuskyNavigateEnv
+#from examples.train.exercise_files import plot_pos_fix_targ
 
 def save(self, path=None):
     """Save model to a pickle located at `path`"""
@@ -37,7 +37,7 @@ def save(self, path=None):
 
 def load(path):
     with open(path, "rb") as f:
-        model_data= cloudpickle.load(f)
+        model_data = cloudpickle.load(f)
     sess = U.get_session()
     sess.__enter__()
     with tempfile.TemporaryDirectory() as td:
@@ -50,19 +50,23 @@ def load(path):
     #return ActWrapper(act, act_params)
 
 
-def traj_segment_generator(pi, env, horizon, stochastic, sensor = False):
+#Iteration döngüsü
+def traj_segment_generator(pi, env, horizon, stochastic, sensor=False, mode_plot=None):
+    # config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'examples', 'configs', 'config_deneme.yaml')
+    # raw_env = HuskyNavigateEnv(config=config_file)
+    # batch = raw_env.config["n_batch"]
     t = 0
     ac = env.action_space.sample() # not used, just so we have the datatype
     new = True # marks if we're on first timestep of an episode
     ob_all = env.reset()
-    if not sensor:
-        ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
     ob_sensor = ob_all['nonviz_sensor']
-        
-    cur_ep_ret = 0 # return in current episode
-    cur_ep_len = 0 # len of current episode
-    ep_rets = [] # returns of completed episodes in this segment
-    ep_lens = [] # lengths of ...
+#    if not sensor:
+        #ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
+    ob = ob_all['depth']
+    cur_ep_ret = 0  # return in current episode
+    cur_ep_len = 0  # len of current episode
+    ep_rets = []  # returns of completed episodes in this segment
+    ep_lens = []  # lengths of ...
 
     # Initialize history arrays
     if sensor:
@@ -74,7 +78,8 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor = False):
     news = np.zeros(horizon, 'int32')
     acs = np.array([ac for _ in range(horizon)])
     prevacs = acs.copy()
-    
+
+#Episode döngüsü
     while True:
         prevac = ac
         #with Profiler("agent act"):
@@ -95,6 +100,8 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor = False):
             ep_lens = []
         i = t % horizon
 
+        #ac = 4 #Stop Only for Test!!!!!
+
         if sensor:
             obs[i] = ob_sensor
         else:
@@ -105,24 +112,34 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor = False):
         acs[i] = ac
         prevacs[i] = prevac
 
-        #with Profiler("environment step"):
+        #with Profiler("Environment step"):
         ob_all, rew, new, meta = env.step(ac)
-        
-        if not sensor:
-            ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
+
+        #if not sensor:
+        #    ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+        ob = ob_all['depth']
         ob_sensor = ob_all['nonviz_sensor']
         rews[i] = rew
 
         cur_ep_ret += rew
         cur_ep_len += 1
+
         if new:
+            #print("Episodes ---------------> %i / %s" % (len(ep_lens)+1, str(batch)))
+            #ep_counter += 1
+            #plot=0
+            #if plot:
+                #print("ENJOY MODE PROCESS...!")
+                #plot_pos_fix_targ.read_file(ep_n=ep_counter, target=mode_plot)
+
             ep_rets.append(cur_ep_ret)
             ep_lens.append(cur_ep_len)
             cur_ep_ret = 0
             cur_ep_len = 0
             ob_all = env.reset()
-            if not sensor:
-                ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
+            #if not sensor:
+            # ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
+            ob = ob_all['depth']
             ob_sensor = ob_all['nonviz_sensor']
         t += 1
 
@@ -206,12 +223,9 @@ def learn(env, policy_func, *,
         saver.restore(tf.get_default_session(), reload_name)
         print("Loaded model successfully.")
 
-
-    #from IPython import embed; embed()
-
-    # Prepare for rollouts
     # ----------------------------------------
-    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True, sensor = sensor)
+    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True,
+                                     sensor = sensor, mode_plot=None)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -220,7 +234,8 @@ def learn(env, policy_func, *,
     lenbuffer = deque(maxlen=100) # rolling buffer for episode lengths
     rewbuffer = deque(maxlen=100) # rolling buffer for episode rewards
 
-    assert sum([max_iters>0, max_timesteps>0, max_episodes>0, max_seconds>0])==1, "Only one time constraint permitted"
+    assert sum([max_iters > 0, max_timesteps > 0, max_episodes > 0,
+                max_seconds > 0]) == 1, "Only one time constraint permitted"
 
     while True:
         if callback: callback(locals(), globals())
@@ -236,14 +251,15 @@ def learn(env, policy_func, *,
         if schedule == 'constant':
             cur_lrmult = 1.0
         elif schedule == 'linear':
-            cur_lrmult =  max(1.0 - float(timesteps_so_far) / max_timesteps, 0)
+            cur_lrmult = max(1.0 - float(timesteps_so_far) / max_timesteps, 0)
         else:
             raise NotImplementedError
 
-        logger.log("********** Iteration %i ************"%iters_so_far)
+        logger.log("********** Iteration %i ************" % (iters_so_far+1))
 
         seg = seg_gen.__next__()
         add_vtarg_and_adv(seg, gamma, lam)
+        #print("Iteration %i is completed!" % (iters_so_far+1))
 
         # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
         ob, ac, atarg, tdlamret = seg["ob"], seg["ac"], seg["adv"], seg["tdlamret"]
@@ -289,18 +305,35 @@ def learn(env, policy_func, *,
         iters_so_far += 1
         logger.record_tabular("EpisodesSoFar", episodes_so_far)
         logger.record_tabular("TimestepsSoFar", timesteps_so_far)
-        logger.record_tabular("TimeElapsed", time.time() - tstart)
+        elapse = time.time() - tstart
+        logger.record_tabular("TimeElapsed", elapse)
+
+        record=1
+        if record:
+            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
+            try:
+                os.mkdir(file_path)
+            except OSError:
+                pass
+            if iters_so_far==1:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
+                              ".txt", "w")
+            else:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
+                              ".txt", "a")
+            #ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f;LossEnt:%.3f;LossVF:%.3f;Time:%.3f"
+            ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f"%(iters_so_far,timesteps_so_far,np.mean(rews)) + "\n")
+            ep_pos.close()
+
         if MPI.COMM_WORLD.Get_rank()==0:
             logger.dump_tabular()
-
-        #print(iters_so_far, save_per_acts)
 
         if save_name and (iters_so_far % save_per_acts == 0):
             base_path = os.path.dirname(os.path.abspath(__file__))
             print(base_path)
             out_name = os.path.join(base_path, 'models', save_name + '_' + str(iters_so_far) + ".model")
             U.save_state(out_name)
-            print ("Saved model successfully.")
+            print("Saved model successfully.")
 
 
 def enjoy(env, policy_func, *,
@@ -315,7 +348,8 @@ def enjoy(env, policy_func, *,
         save_name=None,
         save_per_acts=3,
         sensor=False,
-        reload_name=None
+        reload_name=None,
+        target_pos=None
         ):
     # Setup losses and stuff
     # ----------------------------------------
@@ -369,7 +403,8 @@ def enjoy(env, policy_func, *,
 
     # Prepare for rollouts
     # ----------------------------------------
-    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True, sensor=sensor)
+    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True,
+                                     sensor=sensor, mode_plot=target_pos)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -398,7 +433,7 @@ def enjoy(env, policy_func, *,
         else:
             raise NotImplementedError
 
-        logger.log("********** Iteration %i ************"%iters_so_far)
+        logger.log("********** Iteration %i ************"%(iters_so_far+1))
 
         seg = seg_gen.__next__()
         add_vtarg_and_adv(seg, gamma, lam)
@@ -415,14 +450,14 @@ def enjoy(env, policy_func, *,
         assign_old_eq_new() # set old parameter values to new parameter values
         logger.log("Optimizing...")
         logger.log(fmt_row(13, loss_names))
-        # Here we do a bunch of optimization epochs over the data
-        for _ in range(optim_epochs):
-            losses = [] # list of tuples, each of which gives the loss for a minibatch
-            for batch in d.iterate_once(optim_batchsize):
-                *newlosses, g = lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
-                adam.update(g, optim_stepsize * cur_lrmult) 
-                losses.append(newlosses)
-
+        iters_so_far += 1
+        # # Here we do a bunch of optimization epochs over the data
+        # for _ in range(optim_epochs):
+        #     losses = [] # list of tuples, each of which gives the loss for a minibatch
+        #     for batch in d.iterate_once(optim_batchsize):
+        #         *newlosses, g = lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
+        #         adam.update(g, optim_stepsize * cur_lrmult)
+        #         losses.append(newlosses)
 
 
 
