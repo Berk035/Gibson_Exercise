@@ -65,7 +65,7 @@ def train(seed):
 
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-05-15_700_30_191_360.model'
     print(args.reload_name)
-
+    #deneme
     if args.mode == "SENSOR":
         pposgd_simple.learn(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),

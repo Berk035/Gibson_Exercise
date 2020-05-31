@@ -45,7 +45,6 @@ examples/train/models/
 
 
 log_*/
-baselines/
 aws/
 monitor_*
 comparison/
@@ -72,4 +71,4 @@ gibson/assets
 
 #datasets
 /home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/*
-!/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/Euharlee .gitkeep
+!/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/Euharlee
