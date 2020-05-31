@@ -43,7 +43,7 @@ checkpoint
 *.model.*
 examples/train/models/
 
-
+baselines/
 log_*/
 aws/
 monitor_*
@@ -70,5 +70,5 @@ gibson/assets
 *.pdf
 
 #datasets
-/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/*
+/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/
 !/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/Euharlee
