@@ -107,22 +107,25 @@ class HuskyNavigateEnv(CameraRobotEnv):
         height = self.position[2]
         alive = float(self.robot.alive_bonus(height, pitch))
 
+        #progress = -0.1
+
         rewards = [
             #WARNING:all rewards have rew/frame units and close to 1.0
             alive, #It has 1 or 0 values
-            progress, #It calculates between two frame for target distance
-            close_to_target, #It returns reward step by step between 0.25~0.75
+            #progress,  # It calculates between two frame for target distance
             angle_cost,  # It has -0.6~0 values for tend to target
-            wall_collision_cost, #It  has 0.3~0.1 values edit:0.5
-            steering_cost, #It has -0.1 values when the agent turns
-            obstacle_penalty, #TODO: Aldığı değerlerin etkisi çok düşük
+            #wall_collision_cost,  # It  has 0.3~0.1 values edit:0.5
+            #steering_cost,  # It has -0.1 values when the agent turns
+            #close_to_target, #It returns reward step by step between 0.25~0.75
+
+            #obstacle_penalty, #TODO: Aldığı değerlerin etkisi çok düşük
             #SPL #Success weighted by path length
             #feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
             #joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
 
         #Episode Recording
-        record = 1
+        record = 0
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards"
             try:

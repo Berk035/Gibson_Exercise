@@ -63,7 +63,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-05-15_700_30_191_360.model'
+    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-06-02_400_100_96_60.model'
     print(args.reload_name)
     #deneme
     if args.mode == "SENSOR":
@@ -76,7 +76,7 @@ def train(seed):
                             schedule='linear',
                             save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
                                                                   iteration),
-                            save_per_acts=15,
+                            save_per_acts=10,
                             sensor=args.mode == "SENSOR",
                             reload_name=args.reload_name
                             )
@@ -84,13 +84,13 @@ def train(seed):
         pposgd_fuse.learn(env, policy_fn,
                               max_timesteps=int(num_timesteps * 1.1),
                               timesteps_per_actorbatch=tpa,
-                              clip_param=0.2, entcoeff=0.01,
+                              clip_param=0.2, entcoeff=0.05,
                               optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                               gamma=0.99, lam=0.95,
                               schedule='linear',
                               save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
                                                                     iteration),
-                              save_per_acts=15,
+                              save_per_acts=10,
                               reload_name=args.reload_name
                               )
 
