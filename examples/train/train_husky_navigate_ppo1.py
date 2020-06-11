@@ -56,7 +56,7 @@ def train(seed):
     else:
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
+                                          save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess, elm_mode=elm_policy)
 
     env = Monitor(raw_env, logger.get_dir() and
                   osp.join(logger.get_dir(), str(rank)))
