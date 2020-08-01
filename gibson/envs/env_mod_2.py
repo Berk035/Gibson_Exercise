@@ -195,6 +195,7 @@ class BaseRobotEnv(BaseEnv):
             print("-------------------------------")
 
         self.rewards = self._rewards(a)
+        #done, success = self._termination()
         done = self._termination()
 
         self.reward += sum(self.rewards)
@@ -275,7 +276,7 @@ class BaseRobotEnv(BaseEnv):
                                      'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})'''
 
 
-        return observations, sum(self.rewards), bool(done), dict(eye_pos=eye_pos, eye_quat=eye_quat, episode=episode)
+        return observations, sum(self.rewards), bool(done), dict(eye_pos=eye_pos, eye_quat=eye_quat, episode=episode), #success
 
     def _termination(self):
         raise NotImplementedError()
@@ -445,6 +446,7 @@ class CameraRobotEnv(BaseRobotEnv):
 
     def _step(self, a):
         t = time.time()
+        #base_obs, sensor_reward, done, sensor_meta, success = BaseRobotEnv._step(self, a)
         base_obs, sensor_reward, done, sensor_meta = BaseRobotEnv._step(self, a)
         dt = time.time() - t
         # Speed bottleneck
@@ -469,7 +471,7 @@ class CameraRobotEnv(BaseRobotEnv):
 
         if not self._require_camera_input or self.test_env:
             ## No camera input (rgb/depth/normal/semantics)
-            return base_obs, sensor_reward, done, sensor_meta
+            return base_obs, sensor_reward, done, sensor_meta, #success
         else:
             if self.config["show_diagnostics"] and self._require_rgb:
                 self.render_rgb_filled = self.add_text(self.render_rgb_filled)
@@ -480,7 +482,7 @@ class CameraRobotEnv(BaseRobotEnv):
             if debugmode:
                 print("Robot Position:", robot_pos)
                 print("Robot Orientation:", robot_orn)
-            return observations, sensor_reward, done, sensor_meta
+            return observations, sensor_reward, done, sensor_meta, #success
 
     def render_component(self, tag):
         if tag == View.RGB_FILLED:

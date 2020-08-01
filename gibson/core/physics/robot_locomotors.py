@@ -27,12 +27,11 @@ class WalkerBase(BaseRobot):
         scale,
         sensor_dim=None,
         resolution=512,
-        #control = 'torque',
-        control = 'velocity',
+        control='velocity',
         env = None
     ):
         BaseRobot.__init__(self, filename, robot_name, scale, env)
-        self.control = control
+        self.control = self.env.config["control"] if "control" in self.env.config.keys() else control
         self.resolution = resolution
         self.obs_dim = None
         self.obs_dim = [self.resolution, self.resolution, 0]
@@ -222,10 +221,6 @@ class WalkerBase(BaseRobot):
             0.3* vx , 0.3* vy , 0.3* vz ,  # 0.3 is just scaling typical speed into -1..+1, no physical sense here
             r, p], dtype=np.float32)
 
-        #more = np.array([np.sin(self.angle_to_target), np.cos(self.angle_to_target),
-        #                 0.3 * vx, 0.3 * vy, 0.3 * vz,
-        #                 # 0.3 is just scaling typical speed into -1..+1, no physical sense here
-        #                 r, p], dtype=np.float32)
         debugmode=0
         if debugmode:
             print("Robot more", more)
@@ -233,17 +228,6 @@ class WalkerBase(BaseRobot):
         if not 'nonviz_sensor' in self.env.config["output"]:
             j.fill(0)
             more.fill(0)
-
-        d = self.dist_to_target()
-
-        '''if self.env.config["waypoint_active"]:
-            if (d <= 0.2):  # Pass next waypoint
-                self.point += 1
-                # self.point = np.clip(self.point, 0, 4) #Aloha_way_custom için geçerli
-                self.point = np.clip(self.point, 0, 1)
-                self.set_target_position(self.way_target[self.point])
-                print("Reached Waypoint %i" % self.point)
-        '''
 
         return np.clip( np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)
 

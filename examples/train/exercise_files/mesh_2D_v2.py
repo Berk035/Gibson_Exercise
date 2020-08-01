@@ -6,7 +6,6 @@ import seaborn as sns
 import pandas as pd
 #from scipy.stats import norm
 
-
 def load_obj(fn):
 	verts = []
 	faces = []
@@ -45,7 +44,7 @@ def mesh(model_id="", episode=0):
 
 	show_waypoint = 1
 	if show_waypoint:
-		df = pandas.read_csv('euharlee_waypoints.csv')
+		df = pandas.read_csv('euharlee_waypoints_sort.csv')
 		points = df.values
 		length = len(points)
 		sp = np.zeros((length, 3)); ang = np.zeros((length, 1)); gp = np.zeros((length, 3))
@@ -54,27 +53,23 @@ def mesh(model_id="", episode=0):
 			sp[r] = np.array([points[r][2], points[r][3], points[r][4]])
 			ang[r] = np.array([points[r][5]])
 			gp[r] = np.array([points[r][6], points[r][7], points[r][8]])
-			complexity[r] = np.array([points[r][10] / points[r][9]])
+			complexity[r] = np.array([points[r][10]/points[r][9]])
 
 		print("ModelID:", points[0][1])
 		plt.plot(sp[episode % len(sp) - 1][0], sp[episode % len(sp) - 1][1], 'r*')
 		plt.plot(gp[episode % len(sp) - 1][0], gp[episode % len(sp) - 1][1], 'g*')
 		print("(%i) Nav Complexity ---> %.3f" % (episode, complexity[episode % len(sp) - 1]))
 
-		'''for k in range(length):
-			plt.plot(sp[k][0], sp[k][1], 'r*')
-			plt.plot(gp[k][0], gp[k][1], 'r*')
-			print("%i Nav Complexity ---> %.3f"%(k,complexity[k]))'''
+	debug=0
+	if debug:
+		plt.show()
 
-	#plt.show()
-
-def read_file(ep_n=0, target=None):
+def read_file(ep_n=0):
 
 	debug=0
 	if debug:
 		print("hello")
 	else:
-		target_pos = target
 		count = 0
 		for line in open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
 						 "_" + str(ep_n) + ".txt").readlines(): count += 1
@@ -103,14 +98,9 @@ def read_file(ep_n=0, target=None):
 				break
 
 		i_x = x_pos[0];	i_y = y_pos[0]
-		# t_x, t_y, _ = target_pos
-
-		# i_x=-5; i_y=7
 
 		print("Episode: %i" % ep_n)
 		print("Mean Rew: %.2f" % np.mean(tot_ret))
-		# print("Start Pos:", [x_pos[0], y_pos[0], target_pos[2]])
-		# print("Goal Pos:", target_pos)
 		print("---------------------------")
 		plt.style.use('seaborn') # switch to seaborn style
 
@@ -135,96 +125,15 @@ def read_file(ep_n=0, target=None):
 		plt.xlabel('Actions')
 		plt.ylabel('# of Actions')
 		plt.tight_layout()
+
+		ep_pos.close()
+		plt.show()
+
 		# the histogram of the data
 		#mu = 0; sigma=1
 		#num, bins, patches = plt.hist(actions, 50, density=1)
 		#y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (bins - mu))**2))
 		#plt.plot(bins, y, '--')
-
-
-		ep_pos.close()
-		plt.show()
-
-
-def plot_iter_ex():
-	"Plotting iterations vs reward, entrophy loss,value loss graphs"
-	C1 = '\033[94m'
-	C1END = '\033[0m'
-	print(C1 + "PLOTTING ITERATION:" + C1END)
-
-	ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-				  ".txt", "r")
-
-	'''#ELM PLOTTING
-	ep_pos_elm = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-				  "elm.txt", "r")
-
-	counter_elm = 0; rew_elm = []; it_zone_elm = []; std_elm = []
-	for line in ep_pos_elm:
-		raw_elm = line.split(";")
-		iter_elm = raw_elm[0]; temp_1_elm = int(iter_elm.replace('Iteration:', ''))
-		step_elm = raw_elm[1]; temp_2_elm = int(step_elm.replace('TimeSteps:', ''))
-		rewards_elm = raw_elm[2]; temp_3_elm = rewards_elm.replace('Rew:', ''); temp_4_elm = float(temp_3_elm.replace('\n', ''))
-
-		it_zone_elm.append(temp_1_elm)
-		rew_elm.append(temp_4_elm)
-		std_elm.append(np.std(rew_elm[-10:]))
-		counter_elm += 1'''
-
-	counter = 0; rew = [];	it_zone = [];	std = [];	ent = [];	vf = [];	time = []
-	for line in ep_pos:
-		raw = line.split(";")
-		iter = raw[0];	temp_1 = int(iter.replace('Iteration:', ''))
-		step = raw[1];	temp_2 = int(step.replace('TimeSteps:', ''))
-		rewards = raw[2];	temp_3 = float(rewards.replace('Rew:', ''))
-		ent_t = raw[3];	temp_4 = float(ent_t.replace('LossEnt:', ''))
-		vf_t = raw[4];	temp_5 = float(vf_t.replace('LossVF:', ''))
-		time_t = raw[5]; hold = time_t.replace('Time:',''); temp_6 = float(hold.replace('\n', ''))
-
-		it_zone.append(temp_1)
-		rew.append(temp_3)
-		std.append(np.std(rew[-10:]))
-		# std.append(np.std(rew))
-		ent.append(temp_4)
-		vf.append(temp_5)
-		time.append(temp_6)
-
-	counter += 1
-	plt.figure(figsize=(12, 8))
-	plt.subplot(2, 2, 1)
-	plt.title('Total Reward')
-	plt.xlabel('Iterations')
-	plt.plot(it_zone, rew, color='blue', label="MLP Mean Reward")
-	plt.grid(True)
-	plt.subplot(2, 2, 2)
-	plt.title('Std Dev')
-	plt.xlabel('Iterations')
-	plt.plot(it_zone[-10:], std[-10:], color='red', label="MLP Std. Dev")
-	# plt.plot(it_zone, std, 'r')
-	plt.grid(True)
-	plt.subplot(2, 2, 3)
-	plt.title('Total Entrophy Loss')
-	plt.xlabel('Iterations')
-	plt.plot(it_zone, ent, 'k')
-	plt.grid(True)
-	plt.subplot(2, 2, 4)
-	plt.title('Total Value Loss')
-	plt.xlabel('Iterations')
-	plt.plot(it_zone, vf, 'g')
-	plt.grid(True)
-	plt.tight_layout()
-
-	plt.show()
-
-	# time_x = (time)
-	# plt.figure(2)
-	# plt.plot(it_zone, time_x)
-	#plt.subplot(2, 2, 3)
-	#plt.title('Timesteps per Iteration, Rew Mean %.2f' % np.mean(rew[:]))
-	#plt.xlabel('Timesteps')
-	#plt.hist(ep_length, bins=50, color='black')
-	#plt.grid(True)
-	#plt.tight_layout()
 
 def plot_csv():
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
@@ -259,32 +168,21 @@ def plot_csv():
 
 
 def main():
-	use_data = False
-	r = 50  # Number of Navigation Scenario
-	k = 10060  # Number of episode
-	map = 3
+	"This function shows that analysis of training process"
 
-	# Reward Plotting
-	#plot_iter_ex()
-	plot_csv()
+	plot_csv() #Reward Plotting
 
-	if use_data:
-		df = pandas.read_csv('pointgoal_gibson_full_v2.csv', skiprows=1100, nrows=100)  # Read DataFrame for Aloha
-		points = df.values
-		start = [points[r][0], points[r][1], points[r][2]]
-		goal = [points[r][3], points[r][4], points[r][5]]
-		mesh(model_id="Aloha")
-		read_file(ep_n=3000, target=goal)
-	else:
-		start = [0, -5, 0.3]  # For room1
-		start_2 = [0, 2, 0.3]  # For room2
-		goal = [-0.77, -4.571, 0.3]
-		for x in range(map):
-			mesh(model_id="Euharlee", episode=k)
-			read_file(ep_n=k, target=goal)
-			k += 1
+	for x in range(args.map):
+		mesh(model_id="Euharlee", episode=args.eps)
+		read_file(ep_n=args.eps)
+		args.eps += 1
 
 
 if __name__ == '__main__':
-	# mesh(model_id="Euharlee")
+	import argparse
+	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('--eps', type=int, default=10071) # Number of episode
+	parser.add_argument('--map', type=int, default=3) # Number of shown map
+	args = parser.parse_args()
+	#mesh(model_id="Euharlee")
 	main()

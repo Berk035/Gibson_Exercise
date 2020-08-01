@@ -9,7 +9,7 @@ from mpi4py import MPI
 from gibson.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple,pposgd_fuse
-import baselines.common.tf_util as U
+#import baselines.common.tf_util as U
 from gibson.utils import utils
 from gibson.utils import cnn_policy, mlp_policy, fuse_policy
 import datetime
@@ -17,8 +17,7 @@ from baselines import logger
 from gibson.utils.monitor import Monitor
 import os.path as osp
 import tensorflow as tf
-import random
-import sys
+#import random, sys
 
 
 ## Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
@@ -45,11 +44,11 @@ def train(seed):
 
     env = HuskyNavigateEnv(gpu_idx=args.gpu_idx, config = config_file)
     #env = HuskyGibsonFlagRunEnv(gpu_idx=args.gpu_idx, config = config_file)
-    step = env.config['n_step']; batch = env.config['n_batch']; iteration = env.config['n_iter']
+    step = env.config['n_step']; episode = env.config['n_episode']; iteration = env.config['n_iter']
     target = env.config['target_pos']
     elm_policy = env.config['elm_active']
-    num_timesteps = step * batch * iteration
-    tpa = step * batch
+    num_timesteps = step * episode * iteration
+    tpa = step * episode
 
     if args.mode == "SENSOR":
         def policy_fn(name, ob_space, ac_space):
@@ -67,7 +66,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-05-16_700_30_191_210.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-07-30_300_100_5_1.model'
     #args.reload_name = '/home/berk/PycharmProjects/Original_Gibs/gibson/utils/models/flagrun_RGBD2_150.model'
 
     if args.mode == "SENSOR":
@@ -78,7 +77,7 @@ def train(seed):
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',
-                            save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
+                            save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                   iteration),
                             save_per_acts=15,
                             sensor=args.mode == "SENSOR",
@@ -92,7 +91,7 @@ def train(seed):
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
-                          save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
+                          save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                 iteration),
                           save_per_acts=15,
                           reload_name=args.reload_name

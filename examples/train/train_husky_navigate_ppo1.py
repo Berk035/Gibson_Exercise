@@ -44,10 +44,10 @@ def train(seed):
     print(config_file)
 
     raw_env = HuskyNavigateEnv(gpu_idx=args.gpu_idx, config=config_file)
-    step = raw_env.config['n_step']; batch = raw_env.config['n_batch']; iteration = raw_env.config['n_iter']
+    step = raw_env.config['n_step']; episode = raw_env.config['n_episode']; iteration = raw_env.config['n_iter']
     elm_policy = raw_env.config['elm_active']
-    num_timesteps = step*batch*iteration
-    tpa = step*batch
+    num_timesteps = step*episode*iteration
+    tpa = step*episode
 
     if args.mode == "SENSOR":
         def policy_fn(name, ob_space, ac_space):
@@ -65,7 +65,7 @@ def train(seed):
 
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-06-02_400_100_96_60.model'
     print(args.reload_name)
-    #deneme
+
     if args.mode == "SENSOR":
         pposgd_simple.learn(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
@@ -74,7 +74,7 @@ def train(seed):
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',
-                            save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
+                            save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                   iteration),
                             save_per_acts=10,
                             sensor=args.mode == "SENSOR",
@@ -88,9 +88,9 @@ def train(seed):
                               optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                               gamma=0.99, lam=0.95,
                               schedule='linear',
-                              save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, batch,
+                              save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                     iteration),
-                              save_per_acts=10,
+                              save_per_acts=1,
                               reload_name=args.reload_name
                               )
 

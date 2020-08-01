@@ -64,10 +64,12 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     ep_rets = []  # returns of completed episodes in this segment
     ep_lens = []  # lengths of ...
 
+    SR=0
+    ep_success = [] #Successfully episodes
+
     # Initialize history arrays
     obs_sensor = np.array([ob_sensor for _ in range(horizon)])
     obs = np.array([ob for _ in range(horizon)])
-
     rews = np.zeros(horizon, 'float32')
     vpreds = np.zeros(horizon, 'float32')
     news = np.zeros(horizon, 'int32')
@@ -77,7 +79,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     while True:
         prevac = ac
         # with Profiler("agent act"):
-
         ac, vpred = pi.act(stochastic, ob, ob_sensor)
         # Slight weirdness here because we need value function at time T
         # before returning segment [0, T-1] so we get the correct
@@ -101,7 +102,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         prevacs[i] = prevac
 
         # with Profiler("environment step"):
-        ob_all, rew, new, meta = env.step(ac)
+        ob_all, rew, new, meta, = env.step(ac) #success = env.step(ac)
         ob_sensor = ob_all['nonviz_sensor']
         #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
         ob = ob_all['depth']
@@ -115,6 +116,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         # cv2.imshow('Depth', ob_all['depth'])
         # cv2.waitKey(1)
         # cv2.imwrite(os.path.join(path, 'FRAME_%i.jpg'), ob_all['depth'])
+        ep_success.append(SR)
 
         cur_ep_ret += rew
         cur_ep_len += 1
@@ -127,7 +129,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
             ob_sensor = ob_all['nonviz_sensor']
             #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
             ob = ob_all['depth']
-
         t += 1
 
 
