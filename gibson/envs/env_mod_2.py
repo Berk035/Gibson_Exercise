@@ -28,7 +28,7 @@ from PIL import Image
 from transforms3d.euler import euler2quat, euler2mat
 from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
-import time
+import time, csv
 
 DEFAULT_TIMESTEP = 1.0 / (4 * 9)
 DEFAULT_FRAMESKIP = 4
@@ -70,6 +70,7 @@ class BaseRobotEnv(BaseEnv):
         self.eps_reward = 0
         self.reward = 0
         self.eps_count = 0
+        #self.it_count=1
 
         self._robot_introduced = False
         self._scene_introduced = False
@@ -242,10 +243,37 @@ class BaseRobotEnv(BaseEnv):
             else:
                 ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
                               "_" + str(self.eps_count) + ".txt", "a")
-            ep_pos.write("%i;%.3f;%.3f;%.3f" % (self.nframe, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
+            ep_pos.write("%i;%i;%.3f;%.3f;%.3f" % (self.nframe, a, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
             #It is created for ganerate waypoints.
             #ep_pos.write("%.3f\t%.3f\t%.3f\t%.3f" % (body_xyz[0], body_xyz[1], body_xyz[2], rpy[2]) + "\n")
             ep_pos.close()
+
+        '''record = 1
+        if record:
+            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
+            try:
+                os.mkdir(file_path)
+            except OSError:
+                pass
+
+            if self.eps_count == 1 and self.nframe == 1:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
+                          +str(self.it_count)+'.csv', 'w', newline='') as csvfile:
+                    fieldnames = ['Episode','Frame','Position_X','Position_Y','Reward']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writeheader()
+                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
+                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})
+            else:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
+                          +str(self.it_count)+'.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Episode', 'Frame', 'Position_X', 'Position_Y', 'Reward']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
+                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})'''
+
 
         return observations, sum(self.rewards), bool(done), dict(eye_pos=eye_pos, eye_quat=eye_quat, episode=episode)
 

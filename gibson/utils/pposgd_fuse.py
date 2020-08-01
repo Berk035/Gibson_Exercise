@@ -11,7 +11,7 @@ from gibson.core.render.profiler import Profiler
 import os
 import tempfile
 import cloudpickle
-import zipfile
+import zipfile, csv
 import sys
 import matplotlib.pyplot as plt, cv2
 
@@ -148,36 +148,6 @@ def add_vtarg_and_adv(seg, gamma, lam):
 
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
 
-def plot_iter(time_step,rew):
-    "Plotting timesteps vs reward graph"
-    C1 = '\033[93m'
-    C1END = '\033[0m'
-    print(C1 + "PLOTTING:" + C1END)
-
-    ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-                  ".txt", "r")
-
-    counter = 0;    rew = [];    it_zone = []
-    for line in ep_pos:
-        raw = line.split(";")
-        iter = raw[0];        temp_1 = int(iter.replace('Iteration:', ''))
-        step = raw[1];        temp_2 = int(step.replace('TimeSteps:', ''))
-        rewards = raw[2];        temp_3 = float(rewards.replace('Rew:', ''))
-        ent = raw[3];        temp_4 = float(ent.replace('LossEnt:', ''))
-        vf = raw[4];        hold = vf.replace('LossVF:', '');        temp_5 = float(hold.replace('\n', ''))
-
-        it_zone.append(temp_1)
-        rew.append(temp_3)
-
-        counter += 1
-
-    plt.figure(1)
-    plt.title('Total Reward')
-    plt.plot(it_zone, rew, 'b')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
 def learn(env, policy_func, *,
           timesteps_per_actorbatch,  # timesteps per actor per update
           clip_param, entcoeff,  # clipping parameter epsilon, entropy coeff
@@ -203,7 +173,7 @@ def learn(env, policy_func, *,
     atarg = tf.placeholder(dtype=tf.float32, shape=[None]) # Target advantage function (if applicable)
     ret = tf.placeholder(dtype=tf.float32, shape=[None]) # Empirical return
     lrmult = tf.placeholder(name='lrmult', dtype=tf.float32, shape=[]) # learning rate multiplier, updated with schedule
-    clip_param = clip_param * lrmult # Annealed cliping parameter epislon
+    clip_param = clip_param * lrmult # Annealed cliping parameter epsilon
 
     ob = U.get_placeholder_cached(name="ob")
     ob_sensor = U.get_placeholder_cached(name="ob_sensor")
@@ -328,27 +298,34 @@ def learn(env, policy_func, *,
         elapse = time.time() - tstart
         logger.record_tabular("TimeElapsed", elapse)
 
-        record=1
+        #Iteration Recording
+        record = 1
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
-            if iters_so_far==1:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-                              ".txt", "w")
+
+            if iters_so_far == 1:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                          'w', newline='') as csvfile:
+                    fieldnames = ['Iteration', 'TimeSteps','Reward','LossEnt','LossVF','PolSur']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writeheader()
+                    writer.writerow({'Iteration':iters_so_far, 'TimeSteps':timesteps_so_far,
+                                     'Reward':np.mean(rews),'LossEnt':meanlosses[4],
+                                     'LossVF':meanlosses[2],'PolSur':meanlosses[1]})
             else:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-                              ".txt", "a")
-            #ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f;LossEnt:%.3f;LossVF:%.3f;Time:%.3f"
-            ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f"%(iters_so_far,timesteps_so_far,np.mean(rews)) + "\n")
-            ep_pos.close()
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                          'a', newline='') as csvfile:
+                    fieldnames = ['Iteration', 'TimeSteps', 'Reward', 'LossEnt', 'LossVF', 'PolSur']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-
-        debug=0
-        if debug:
-            plot_iter(timesteps_so_far,rewbuffer)
+                    writer.writerow({'Iteration': iters_so_far, 'TimeSteps': timesteps_so_far,
+                                     'Reward': np.mean(rews), 'LossEnt': meanlosses[4],
+                                     'LossVF': meanlosses[2],'PolSur':meanlosses[1]})
 
 
         if MPI.COMM_WORLD.Get_rank() == 0:

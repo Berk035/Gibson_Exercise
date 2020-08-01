@@ -67,7 +67,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-05-16_700_30_191_210.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_back/gibson/utils/models/PPO_DEPTH_2020-07-29_300_100_91_1.model'
     #args.reload_name = '/home/berk/PycharmProjects/Original_Gibs/gibson/utils/models/flagrun_RGBD2_150.model'
 
     if args.mode == "SENSOR":
