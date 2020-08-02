@@ -1,5 +1,6 @@
 #add parent dir to find package. Only needed for source code build, pip install doesn't need it.
-import os, inspect
+import os
+import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0,parentdir)
@@ -84,13 +85,13 @@ def train(seed):
         pposgd_fuse.learn(env, policy_fn,
                               max_timesteps=int(num_timesteps * 1.1),
                               timesteps_per_actorbatch=tpa,
-                              clip_param=0.2, entcoeff=0.05,
+                              clip_param=0.2, entcoeff=0.01,
                               optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                               gamma=0.99, lam=0.95,
                               schedule='linear',
                               save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                     iteration),
-                              save_per_acts=1,
+                              save_per_acts=10,
                               reload_name=args.reload_name
                               )
 

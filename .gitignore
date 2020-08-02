@@ -70,5 +70,4 @@ gibson/assets
 *.pdf
 
 #datasets
-/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/
 !/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/Euharlee

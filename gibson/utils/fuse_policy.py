@@ -73,6 +73,7 @@ class FusePolicy(object):
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
         self.vpred = tf.layers.dense(x, 1, name="value", kernel_initializer=U.normc_initializer(1.0))[:, 0]
+
         #self.session.run(logits.kernel)
         self.state_in = []
         self.state_out = []
@@ -80,7 +81,7 @@ class FusePolicy(object):
         stochastic = tf.placeholder(dtype=tf.bool, shape=())
         ac = self.pd.sample()  # XXX
         self._act = U.function([stochastic, ob, ob_sensor], [ac, self.vpred, logits])
-        #Giriş parametreleri ve çıkış parametrelerini gösteriyor.
+
 
     def act(self, stochastic, ob, ob_sensor):
         ac1, vpred1, _ = self._act(stochastic, ob[None], ob_sensor[None])
