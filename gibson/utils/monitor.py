@@ -73,7 +73,7 @@ class Monitor(Wrapper):
             self.episode_lengths.append(eplen)
             info['episode'] = epinfo
         self.total_steps += 1
-        return (ob, rew, done, info,) #success)
+        return (ob, rew, done, info)
 
     def close(self):
         if self.f is not None:
