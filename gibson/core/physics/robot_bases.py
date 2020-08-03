@@ -33,9 +33,9 @@ def load_waypoint(curriculum=None):
     """Loading 100 different waypoints from path plan file
     """
     if not curriculum:
-        df = ps.read_csv(currentdir + '/euharlee_waypoints.csv')
+        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints.csv')
     else:
-        df = ps.read_csv(currentdir + '/euharlee_waypoints_sort.csv')
+        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_sort.csv')
 
     z_offset = 0.3
     points = df.values
@@ -64,7 +64,7 @@ class BaseRobot:
         self.initial_orn = None
 
         if self.config["waypoint_active"]:
-            self.way_pos, self.way_target, self.way_orn = load_waypoint(self.config["curriculum"])
+            self.way_pos, self.way_target, self.way_orn = load_waypoint()
             self.point = 0  # İstenilen waypoint noktasına erişimi sağlamak için.
 
         self.robot_ids = None
@@ -159,7 +159,7 @@ class BaseRobot:
             self.target_orn, self.target_pos    = self.config["target_orn"], self.config["target_pos"]
             self.initial_orn, self.initial_pos  = self.config["initial_orn"], self.config["initial_pos"]
 
-        #TODO: Target position must be assign according to the way target!!!
+        #TODO: Target position must be assign according to do way target!!!
         '''Sırayla ulaşıldığı takdirde waypointlerden başlatıyor !!!'''
         # if  self.initial_orn == None:
         #     #self.initial_pos = self.config["initial_pos"]
@@ -197,12 +197,11 @@ class BaseRobot:
         if not (self.env.eps_count-1) % self.config['n_batch']:
             if self.config["enjoy"]:
                 self.iter_so_far = 150
-            if self.config["curriculum"]:
-                scale_fac=5
-                self.iter_so_far+=1
-                self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
-                self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
-                self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
+            scale_fac=5
+            self.iter_so_far+=1
+            self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
+            self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
+            self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
             #print("X_range:{}, Y_range:{}".format(x_range,y_range))
 
 

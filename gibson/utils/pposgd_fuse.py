@@ -127,7 +127,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
             ob_sensor = ob_all['nonviz_sensor']
             #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
             ob = ob_all['depth']
-
         t += 1
 
 
@@ -299,7 +298,7 @@ def learn(env, policy_func, *,
         logger.record_tabular("TimeElapsed", elapse)
 
         #Iteration Recording
-        record = 1
+        record = 0
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
             try:

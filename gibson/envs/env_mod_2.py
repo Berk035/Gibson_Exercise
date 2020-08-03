@@ -176,7 +176,8 @@ class BaseRobotEnv(BaseEnv):
     foot_collision_cost = -1.0  # touches another leg, or other objects, that cost makes robot avoid smashing feet into itself
     stall_torque_cost = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
     wall_collision_cost = -0.5 #Avoiding from walls
-    foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
+    #foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
+    foot_ground_object_names = {"buildingFloor"}  # to distinguish ground and other objects
     joints_at_limit_cost = -0.1 # discourage stuck joints
 
     def _step(self, a):
@@ -229,7 +230,7 @@ class BaseRobotEnv(BaseEnv):
         rpy = self.robot.get_rpy()
 
         #Episode Recording
-        record = 1
+        record = 0
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
             try:

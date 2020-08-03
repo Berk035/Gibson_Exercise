@@ -1,10 +1,6 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
 model_id: Euharlee
-#target_orn: [0, 0, 0]
-#target_pos: [-1, -6, 0.3]
-#initial_orn: [0, 0, -2.8]
-#initial_pos: [-2, 2, 0.3]
 target_orn: [0, 0, 0]
 target_pos: [-1,2,0.3]
 initial_orn: [0, 0, 3.097]
@@ -13,18 +9,18 @@ initial_pos: [-2,-6,0.3]
 #Robot Specifications--------------------
 robot_scale: 0.4
 power: 3.35
-control: velocity
+control: torque
 
 #Train Parameters------------------------
-n_step: 250
+n_step: 300
 n_episode: 100
 #n_iter: 91 #(100 Iteration)
-n_iter: 5
+n_iter: 1
 
 #Learning Method
 waypoint_active: true
-elm_active: false
 curriculum: true
+elm_active: false
 
 #Screen & UI Parameters------------------
 fov: 1.57
@@ -35,12 +31,12 @@ show_diagnostics: true
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose: false
-  random_target_pose: false
+  random_initial_pose : false
+  random_target_pose : false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.0, 0.0]
-  random_init_rot_range: [0, 0]
+  random_init_rot_range: [-0.1, 0.1]
 
 output: [nonviz_sensor, depth]
 resolution: 128
