@@ -28,7 +28,7 @@ from PIL import Image
 from transforms3d.euler import euler2quat, euler2mat
 from transforms3d.quaternions import quat2mat, qmult
 import transforms3d.quaternions as quat
-import time
+import time, csv
 
 DEFAULT_TIMESTEP = 1.0 / (4 * 9)
 DEFAULT_FRAMESKIP = 4
@@ -40,9 +40,9 @@ DEFAULT_DEBUG_CAMERA = {
     'z_offset': 0
 }
 
-#Scale ve offset factor anlamı nedir?
 DEPTH_SCALE_FACTOR = 35
 DEPTH_OFFSET_FACTOR = 20
+
 
 class BaseRobotEnv(BaseEnv):
     """Based on BaseEnv
@@ -70,6 +70,7 @@ class BaseRobotEnv(BaseEnv):
         self.eps_reward = 0
         self.reward = 0
         self.eps_count = 0
+        #self.it_count=1
 
         self._robot_introduced = False
         self._scene_introduced = False
@@ -135,15 +136,13 @@ class BaseRobotEnv(BaseEnv):
         return self.robot.keys_to_action
 
     def _reset(self):
-        assert(self._robot_introduced)
-        assert(self._scene_introduced)
-        debugmode = 0
-        if debugmode:
-            # body_xyz = self.robot.body_xyz
-            # print("[{}, {}, {}],".format(body_xyz[0], body_xyz[1], body_xyz[2]))
-            print("Episode: steps:{} score:{}".format(self.nframe, self.reward))
-            print("Episode count: {}".format(self.eps_count))
-            self.eps_count += 1
+        assert (self._robot_introduced)
+        assert (self._scene_introduced)
+        self.eps_count += 1
+
+        #print("Episode count: {}/50".format((self.eps_count%50)) + " -------- "
+        #     + "Score: {:.3g}".format(self.reward))
+
         self.nframe = 0
         self.eps_reward = 0
         BaseEnv._reset(self)
@@ -174,17 +173,27 @@ class BaseRobotEnv(BaseEnv):
         return observations
 
     electricity_cost = -2.0  # cost for using motors -- this parameter should be carefully tuned against reward for making progress, other values less improtant
-    stall_torque_cost = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
     foot_collision_cost = -1.0  # touches another leg, or other objects, that cost makes robot avoid smashing feet into itself
-    wall_collision_cost = -0.1
-    foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
+    stall_torque_cost = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
+    wall_collision_cost = -0.5 #Avoiding from walls
+    #foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
+    foot_ground_object_names = {"buildingFloor"}  # to distinguish ground and other objects
     joints_at_limit_cost = -0.1 # discourage stuck joints
 
     def _step(self, a):
         self.nframe += 1
+
         if not self.scene.multiplayer:  # if multiplayer, action first applied to all robots, then global step() called, then _step() for all robots with the same actions
             self.robot.apply_action(a)
             self.scene.global_step()
+
+        debugmode = 0
+        if debugmode:
+            print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
+            #print("Frame Reward: %.5f" % sum(self.rewards))
+            #print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
+            #print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            print("-------------------------------")
 
         self.rewards = self._rewards(a)
         done = self._termination()
@@ -204,17 +213,10 @@ class BaseRobotEnv(BaseEnv):
         pose = [eye_pos, eye_quat]
         observations = self.render_observations(pose)
 
-        x,y,z = self.robot.get_position()
-        roll,pitch,yaw=self.robot.get_rpy()
-        #tar_x,tar_y,tar_z = []
-
         debugmode = 0
-        if debugmode:
-            print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
-            print("Frame Reward: %.5f" % sum(self.rewards))
-            print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
-            print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
-            print("-------------------------------")
+        if (debugmode):
+            print("Camera env eye position", eye_pos)
+            print("episode rewards", sum(self.rewards), "steps", self.nframe)
 
         episode = None
         if done:
@@ -223,6 +225,57 @@ class BaseRobotEnv(BaseEnv):
             debugmode = 0
             if debugmode:
                 print("return episode:", episode)
+
+        body_xyz = self.robot.body_xyz
+        rpy = self.robot.get_rpy()
+
+        #Episode Recording
+        record = 0
+        if record:
+            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
+            try:
+                os.mkdir(file_path)
+            except OSError:
+                pass
+
+            if self.nframe == 1:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+                              "_" + str(self.eps_count) + ".txt", "w")
+            else:
+                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+                              "_" + str(self.eps_count) + ".txt", "a")
+            ep_pos.write("%i;%i;%.3f;%.3f;%.3f" % (self.nframe, a, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
+            #It is created for ganerate waypoints.
+            #ep_pos.write("%.3f\t%.3f\t%.3f\t%.3f" % (body_xyz[0], body_xyz[1], body_xyz[2], rpy[2]) + "\n")
+            ep_pos.close()
+
+        '''record = 1
+        if record:
+            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
+            try:
+                os.mkdir(file_path)
+            except OSError:
+                pass
+
+            if self.eps_count == 1 and self.nframe == 1:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
+                          +str(self.it_count)+'.csv', 'w', newline='') as csvfile:
+                    fieldnames = ['Episode','Frame','Position_X','Position_Y','Reward']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writeheader()
+                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
+                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})
+            else:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
+                          +str(self.it_count)+'.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Episode', 'Frame', 'Position_X', 'Position_Y', 'Reward']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
+                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})'''
+
+
         return observations, sum(self.rewards), bool(done), dict(eye_pos=eye_pos, eye_quat=eye_quat, episode=episode)
 
     def _termination(self):
@@ -301,6 +354,9 @@ class CameraRobotEnv(BaseRobotEnv):
     def __init__(self, config, gpu_idx, scene_type, tracking_camera):
         ## The following properties are already instantiated inside xxx_env.py:
         BaseRobotEnv.__init__(self, config, tracking_camera, scene_type, gpu_idx)
+
+        #Deprecated
+        #self.penalty = 0
 
         if self.gui:
             self.screen_arr = np.zeros([512, 512, 3])
@@ -404,7 +460,6 @@ class CameraRobotEnv(BaseRobotEnv):
         if self.gui:
             if self.config["display_ui"]:
                 self.render_to_UI()
-                #print('render to ui')
                 self.save_frame += 1
             elif self._require_camera_input:
                 # Use non-pygame GUI
@@ -419,14 +474,14 @@ class CameraRobotEnv(BaseRobotEnv):
         else:
             if self.config["show_diagnostics"] and self._require_rgb:
                 self.render_rgb_filled = self.add_text(self.render_rgb_filled)
-            debugmode = 0
-            if debugmode:
-                print("Eye position", sensor_meta['eye_pos'])
-            debugmode = 0
-            if debugmode:
-                print("Environment observation keys", observations.keys)
-            return observations, sensor_reward, done, sensor_meta
 
+            robot_pos = self.robot.get_position()
+            robot_orn = self.robot.get_rpy()
+            debugmode = 0
+            if debugmode:
+                print("Robot Position:", robot_pos)
+                print("Robot Orientation:", robot_orn)
+            return observations, sensor_reward, done, sensor_meta
 
     def render_component(self, tag):
         if tag == View.RGB_FILLED:
@@ -438,6 +493,26 @@ class CameraRobotEnv(BaseRobotEnv):
             scaled_depth = scaled_depth * DEPTH_SCALE_FACTOR + DEPTH_OFFSET_FACTOR
             overflow = scaled_depth > 255.
             scaled_depth[overflow] = 255.
+
+
+            #Deprecated !!!!!!
+            #cv2.imshow('Depth', scaled_depth)
+            #cv2.waitKey(1)
+            # debug=0
+            # if debug:
+            #     path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/frame_penalty_env"
+            #     try:
+            #         os.mkdir(path)
+            #     except OSError:
+            #         pass
+            #
+            #     width, height = int(scaled_depth.shape[0]), int(scaled_depth.shape[1])
+            #     dim = (width, height)
+            #     #resized_clip = self.add_text(cv2.convertScaleAbs(cv2.resize(scaled_depth, dim, interpolation=cv2.INTER_AREA), alpha=(255.0)))
+            #     self.add_text(scaled_depth)
+            #     cv2.imwrite(os.path.join(path, 'Frame_Penalty_(%.3f).jpg') % (self.reward-self.penalty), scaled_depth)
+            #     self.penalty = self.reward
+
             return scaled_depth
         if tag == View.NORMAL:
             return self.render_normal
@@ -470,7 +545,6 @@ class CameraRobotEnv(BaseRobotEnv):
 
         for component in self.webUI.components:
             self.webUI.update_view(self.render_component(component), component)
-
 
 
     def _close(self):
@@ -538,7 +612,6 @@ class CameraRobotEnv(BaseRobotEnv):
                 observations[output] = getattr(self, "render_" + output)
             except Exception as e:
                 raise Exception("Output component {} is not available".format(output))
-
         # visuals = np.concatenate(visuals, 2)
         return observations
 
@@ -670,7 +743,6 @@ class CameraRobotEnv(BaseRobotEnv):
 
         os.chdir(cur_path)
 
-
     def check_port_available(self):
         assert(self._require_camera_input)
         # TODO (hzyjerry)
@@ -685,6 +757,7 @@ class CameraRobotEnv(BaseRobotEnv):
             except socket.error as e:
                 raise e
                 raise error.Error("Gibson initialization Error: port {} is in use".format(port))
+
     # Gym v0.10.5 compatibility
     reset = _reset
     step = _step

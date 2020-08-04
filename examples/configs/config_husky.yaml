@@ -12,10 +12,9 @@ power: 3.35
 control: torque
 
 #Train Parameters------------------------
-n_step: 300
+n_step: 500
 n_episode: 100
-#n_iter: 91 #(100 Iteration)
-n_iter: 1
+n_iter: 91 #(100 Iteration)
 
 #Learning Method
 waypoint_active: true

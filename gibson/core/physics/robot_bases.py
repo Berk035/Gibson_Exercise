@@ -32,10 +32,10 @@ def quatToXYZW(orn, seq='xyzw'):
 def load_waypoint(curriculum=None):
     """Loading 100 different waypoints from path plan file
     """
-    if not curriculum:
-        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints.csv')
-    else:
+    if curriculum:
         df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_sort.csv')
+    else:
+        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints.csv')
 
     z_offset = 0.3
     points = df.values
@@ -55,6 +55,8 @@ class BaseRobot:
     Handles object loading
     """
     def __init__(self, model_file, robot_name, scale = 1, env = None):
+        self.model_type = None
+        self.config = None
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
@@ -64,8 +66,7 @@ class BaseRobot:
         self.initial_orn = None
 
         if self.config["waypoint_active"]:
-            self.way_pos, self.way_target, self.way_orn = load_waypoint()
-            self.point = 0  # İstenilen waypoint noktasına erişimi sağlamak için.
+            self.way_pos, self.way_target, self.way_orn = load_waypoint(self.config["curriculum"])
 
         self.robot_ids = None
         self.model_file = model_file
@@ -104,7 +105,7 @@ class BaseRobot:
 
             for j in range(p.getNumJoints(bodies[i])):
                 p.setJointMotorControl2(bodies[i],j,p.POSITION_CONTROL,positionGain=0.1,velocityGain=0.1,force=0)
-                ## TODO (hzyjerry): the following is diabled due to pybullet update
+                # the following is diabled due to pybullet update
                 #_,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name = p.getJointInfo(bodies[i], j)
                 _,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name, _,_,_,_ = p.getJointInfo(bodies[i], j)
 
@@ -154,21 +155,9 @@ class BaseRobot:
             self.initial_pos = self.way_pos[self.env.eps_count%len(self.way_pos)-1]
             self.initial_orn = [0,0,float(self.way_orn[self.env.eps_count%len(self.way_pos)-1])]
             self.target_pos = self.way_target[self.env.eps_count%len(self.way_pos)-1]
-            self.point = 0
         else:
             self.target_orn, self.target_pos    = self.config["target_orn"], self.config["target_pos"]
             self.initial_orn, self.initial_pos  = self.config["initial_orn"], self.config["initial_pos"]
-
-        #TODO: Target position must be assign according to do way target!!!
-        '''Sırayla ulaşıldığı takdirde waypointlerden başlatıyor !!!'''
-        # if  self.initial_orn == None:
-        #     #self.initial_pos = self.config["initial_pos"]
-        #     #self.initial_orn = self.config["initial_orn"]
-        #     self.initial_pos = self.way_pos[0]
-        #     self.initial_orn = [0,0,float(self.way_orn[0])]
-        # else:
-        #     self.initial_pos = self.way_pos[self.point]
-        #     self.initial_orn[2] = float(self.way_orn[self.point])
 
         self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
         self.robot_body.reset_position(self.initial_pos)
@@ -208,50 +197,6 @@ class BaseRobot:
         new_pos = [ pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
                     pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
                     pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-
-
-        #WARNING: These lines are deprecated due to waypoints are loaded from file..
-        #All map constrain:
-        #new_pos[0] = np.clip(new_pos[0], -6, 0)
-        #new_pos[1] = np.clip(new_pos[1], -2, 10)
-
-        #Room 1 constraints for Aloha
-        #new_pos[0] = np.clip(new_pos[0], -5.75, -3)
-        #new_pos[1] = np.clip(new_pos[1], 4.5, 8.5)
-
-        #Room 2 constraints for Aloha
-        #new_pos[0] = np.clip(new_pos[0], -2, 0.5)
-        #new_pos[1] = np.clip(new_pos[1], 8.5, 10.25)
-
-        if new_pos[1] < (-2):
-            #Room 1 constraints for Euharlee
-            new_pos[0] = np.clip(new_pos[0], -2, 0.5)
-            new_pos[1] = np.clip(new_pos[1], -6.6, -5)
-            self.config["initial_orn"][2] = self.np_random.uniform(low=1.57,high=3.14)
-        elif new_pos[1] > (-2):
-            #Room 2 constraints for Euharlee
-            new_pos[0] = np.clip(new_pos[0], -2, 2)
-            new_pos[1] = np.clip(new_pos[1], 0, 3.5)
-            self.config["initial_orn"][2] = self.np_random.uniform(low=-3.14, high=-1.57)
-        else:
-            new_pos[0], new_pos[1], _ = self.config["initial_pos"]
-
-        if r_range[1] > 0.5:
-            r_range[0] = np.clip(r_range[0], -0.5, 0)
-            r_range[1] = np.clip(r_range[1], 0, 0.5)
-
-        '''if new_pos[0] > -8 and new_pos[0] < -5:
-                   #Room 1 constraints for Howie
-                   new_pos[0] = np.clip(new_pos[0], -8, -5)
-                   new_pos[1] = np.clip(new_pos[1], 0.5, 2)
-               elif new_pos[0] > -2 and new_pos[0] < 2:
-                   #Room 2 constraints for Howie
-                   new_pos[0] = np.clip(new_pos[0], -2, 2)
-                   new_pos[1] = np.clip(new_pos[1], -1, 2)
-               else:
-                   new_pos[0] = np.clip(new_pos[0], -8, 2)
-                   new_pos[1] = np.clip(new_pos[1], 1, 1.5)
-               '''
 
         #print("X_range:{}, Y_range:{}, new_Pose:{}".format(x_range, y_range, new_pos))
         #print("Iteration:", self.iter_so_far)
@@ -293,6 +238,10 @@ class BaseRobot:
 
     def calc_potential(self):
         return 0
+
+    def robot_specific_reset(self):
+        pass
+
 
 class Pose_Helper:
     def __init__(self, body_part):

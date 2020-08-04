@@ -1,4 +1,4 @@
-from gibson.envs.env_mod_2 import CameraRobotEnv, BaseRobotEnv, SemanticRobotEnv
+from gibson.envs.env_modalities import CameraRobotEnv, BaseRobotEnv, SemanticRobotEnv
 from gibson.envs.env_bases import *
 from gibson.core.physics.robot_locomotors import Husky
 from transforms3d import quaternions

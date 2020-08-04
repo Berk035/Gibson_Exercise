@@ -41,7 +41,7 @@ def train(seed):
     set_global_seeds(workerseed)
     use_filler = not args.disable_filler
 
-    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'config_deneme.yaml')
+    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'config_husky.yaml')
     print(config_file)
 
     raw_env = HuskyNavigateEnv(gpu_idx=args.gpu_idx, config=config_file)
@@ -91,7 +91,7 @@ def train(seed):
                               schedule='linear',
                               save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                     iteration),
-                              save_per_acts=1,
+                              save_per_acts=10,
                               reload_name=args.reload_name
                               )
 

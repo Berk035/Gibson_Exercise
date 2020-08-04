@@ -38,7 +38,7 @@ def train(seed):
     set_global_seeds(workerseed)
 
     use_filler = not args.disable_filler
-    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','configs','config_deneme_enjoy.yaml')
+    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','configs','config_husky_enjoy.yaml')
     #config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','configs','husky_gibson_flagrun_train.yaml')
     print(config_file)
 
@@ -79,7 +79,7 @@ def train(seed):
                             schedule='linear',
                             save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                   iteration),
-                            save_per_acts=15,
+                            save_per_acts=10,
                             sensor=args.mode == "SENSOR",
                             reload_name=args.reload_name
                             )
@@ -93,7 +93,7 @@ def train(seed):
                           schedule='linear',
                           save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                 iteration),
-                          save_per_acts=15,
+                          save_per_acts=10,
                           reload_name=args.reload_name
                           )
 
