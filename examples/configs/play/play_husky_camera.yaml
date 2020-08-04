@@ -1,20 +1,24 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
-model_id: Euharleek"
+model_id: Euharlee
 target_orn: [0, 0, 0]
-target_pos: [-1, -6, 0.3]
-initial_orn: [0, 0, -2.8]
-initial_pos: [-2, 2, 0.3]
-waypoint_active: true
+target_pos: [-2,-6,0.3]
+initial_orn: [0, 0, 3.097]
+initial_pos: [0.5,-6,0.3]
 
 #Robot Specifications--------------------
-robot_scale: 0.4
-power: 3.35
+robot_scale: 0.5
+power: 2.5
+control: velocity
 
 #Train Parameters------------------------
 n_step: 350
-n_batch: 100
-n_iter: 191
+n_episode: 100
+n_iter: 91 #(100 Iteration)
+
+#Learning Method
+waypoint_active: false
+curriculum: true
 elm_active: false
 
 #Screen & UI Parameters------------------
@@ -23,27 +27,27 @@ is_discrete: true
 use_filler: true
 display_ui: true
 show_diagnostics: true
-enable_ui_recording: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose: false
-  random_target_pose: false
+  random_initial_pose : false
+  random_target_pose : false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.0, 0.0]
   random_init_rot_range: [-0.1, 0.1]
 
-output: [nonviz_sensor, depth, rgb_filled]
+output: [nonviz_sensor, depth]
 resolution: 128
 speed:
   timestep: 0.01
-  frameskip: 10
+  frameskip: 3
 
 #Mode Parameters-------------------------
 mode: gui #gui|headless #web_ui
 verbose: true
 fast_lq_render: true
 
-#For Observe Results---------------------
-enjoy: false
+#For observe
+enjoy: true
+enable_ui_recording: false

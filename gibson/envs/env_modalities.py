@@ -152,7 +152,7 @@ class BaseRobotEnv(BaseEnv):
                 [])
             self.ground_ids = set(self.scene.scene_obj_list)
 
-        ## Todo: (hzyjerry) this part is not working, robot_tracking_id = -1
+        # (hzyjerry) this part is not working, robot_tracking_id = -1
         for i in range(p.getNumBodies()):
             if (p.getBodyInfo(i)[0].decode() == self.robot_body.get_name()):
                self.robot_tracking_id=i
@@ -176,7 +176,6 @@ class BaseRobotEnv(BaseEnv):
     foot_collision_cost = -1.0  # touches another leg, or other objects, that cost makes robot avoid smashing feet into itself
     stall_torque_cost = -0.1  # cost for running electric current through a motor even at zero rotational speed, small
     wall_collision_cost = -0.5 #Avoiding from walls
-    #foot_ground_object_names = set(["buildingFloor"])  # to distinguish ground and other objects
     foot_ground_object_names = {"buildingFloor"}  # to distinguish ground and other objects
     joints_at_limit_cost = -0.1 # discourage stuck joints
 
@@ -230,7 +229,7 @@ class BaseRobotEnv(BaseEnv):
         rpy = self.robot.get_rpy()
 
         #Episode Recording
-        record = 0
+        record = 1
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
             try:
@@ -244,9 +243,8 @@ class BaseRobotEnv(BaseEnv):
             else:
                 ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
                               "_" + str(self.eps_count) + ".txt", "a")
+
             ep_pos.write("%i;%i;%.3f;%.3f;%.3f" % (self.nframe, a, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
-            #It is created for ganerate waypoints.
-            #ep_pos.write("%.3f\t%.3f\t%.3f\t%.3f" % (body_xyz[0], body_xyz[1], body_xyz[2], rpy[2]) + "\n")
             ep_pos.close()
 
         '''record = 1

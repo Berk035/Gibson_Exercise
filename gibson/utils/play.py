@@ -104,6 +104,7 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
     obs = env.reset()
     do_restart = False
     last_keys = []              ## Prevent overacting
+
     while running:
         if do_restart:
             do_restart = False
@@ -112,24 +113,19 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
             continue
         if len(pressed_keys) == 0:
             action = keys_to_action[()]
-            #with Profiler("Play Env: step"):
-            #with Profiler(""):
             start = time.time()
             obs, rew, env_done, info = env.step(action)
             record_total += time.time() - start
             record_num += 1
-            #print(info['sensor'])
-            #print("Play mode: reward %f" % rew)
         for p_key in pressed_keys:
             action = keys_to_action[(p_key, )]
             prev_obs = obs
-            #with Profiler("Play Env: step"):
-            #with Profiler(""):
             start = time.time()
             obs, rew, env_done, info = env.step(action)
             record_total += time.time() - start
             record_num += 1
-            #print("Play mode: reward %f" % rew)
+
+
         if callback is not None:
             callback(prev_obs, obs, action, rew, env_done, info)
         #process pygame events

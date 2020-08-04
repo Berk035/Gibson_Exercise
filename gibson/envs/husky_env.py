@@ -49,14 +49,15 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.eps_so_far = 0
         self.hold_rew = 0
         self.success = 0
+        self.SR = 0
 
-        self.position = np.zeros(3);
-        self.old_pos = np.zeros(3)
+        self.position = np.zeros(3);  self.old_pos = np.zeros(3)
 
         # TODO:Episode üzerindeki değerlerin alınması gerekiyor!
         self.shortest_path = np.linalg.norm([np.array(self.config["target_pos"])
                                              - np.array(self.config["initial_pos"])])
         self.actual_path = -5  # Offset for beggining
+
 
     def add_text(self, img):
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -188,25 +189,30 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.hold_rew = sum(rewards)
         return rewards
 
-    def _termination(self, debugmode=False):
+    def _termination(self, debugmode=True):
         height = self.robot.get_position()[2]
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch)) > 0
         # alive = len(self.robot.parts['top_bumper_link'].contact_list()) == 0
+        success = 0
 
-        # done = not alive or self.nframe > (self.config['n_step']-1) or height < 0
         done = not alive or self.nframe > (self.config['n_step'] - 1) or height < 0 or \
-               self.robot.dist_to_target() <= THRESHOLD
+        self.robot.dist_to_target() <= THRESHOLD
         if done:
             self.eps_so_far += 1
             self.actual_path = 0
             self.old_pos = np.zeros(3)
-            # print("Episodes ---------------> %i / %s" % (self.eps_so_far + 1, str(self.config["n_episode"])))
-            debugmode = 0
+
+            if self.robot.dist_to_target() <= THRESHOLD:
+                success=1
+                self.SR+=1
+
             if debugmode:
                 CRED = '\033[91m'
                 CEND = '\033[0m'
                 print(CRED + "Episode reset!" + CEND)
+                print("Episodes -----> %i/%s" % (self.eps_so_far, str(self.config["n_episode"])))
+                print("SR: %.2f" % (self.SR/self.eps_so_far*100))
 
         return done
 

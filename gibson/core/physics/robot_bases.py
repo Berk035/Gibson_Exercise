@@ -55,8 +55,7 @@ class BaseRobot:
     Handles object loading
     """
     def __init__(self, model_file, robot_name, scale = 1, env = None):
-        self.model_type = None
-        self.config = None
+        #self.model_type = None
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
@@ -105,7 +104,7 @@ class BaseRobot:
 
             for j in range(p.getNumJoints(bodies[i])):
                 p.setJointMotorControl2(bodies[i],j,p.POSITION_CONTROL,positionGain=0.1,velocityGain=0.1,force=0)
-                # the following is diabled due to pybullet update
+                ## the following is diabled due to pybullet update
                 #_,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name = p.getJointInfo(bodies[i], j)
                 _,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name, _,_,_,_ = p.getJointInfo(bodies[i], j)
 

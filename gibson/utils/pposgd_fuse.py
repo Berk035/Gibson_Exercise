@@ -77,7 +77,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     while True:
         prevac = ac
         # with Profiler("agent act"):
-
         ac, vpred = pi.act(stochastic, ob, ob_sensor)
         # Slight weirdness here because we need value function at time T
         # before returning segment [0, T-1] so we get the correct
@@ -298,7 +297,7 @@ def learn(env, policy_func, *,
         logger.record_tabular("TimeElapsed", elapse)
 
         #Iteration Recording
-        record = 0
+        record = 1
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
             try:

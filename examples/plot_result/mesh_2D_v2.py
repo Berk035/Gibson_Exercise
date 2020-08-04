@@ -169,8 +169,7 @@ def plot_csv():
 
 def main():
 	"This function shows that analysis of training process"
-
-	plot_csv() #Reward Plotting
+	#plot_csv() #Reward Plotting
 
 	for x in range(args.map):
 		mesh(model_id="Euharlee", episode=args.eps)
@@ -181,7 +180,7 @@ def main():
 if __name__ == '__main__':
 	import argparse
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=10071) # Number of episode
+	parser.add_argument('--eps', type=int, default=70) # Number of episode
 	parser.add_argument('--map', type=int, default=3) # Number of shown map
 	args = parser.parse_args()
 	#mesh(model_id="Euharlee")
