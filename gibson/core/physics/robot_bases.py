@@ -33,7 +33,8 @@ def load_waypoint(curriculum=None):
     """Loading 100 different waypoints from path plan file
     """
     if curriculum:
-        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_sort.csv')
+        #df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_sort.csv')
+        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_clipped_sort.csv')
     else:
         df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints.csv')
 

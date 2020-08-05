@@ -21,7 +21,7 @@ def load_obj(fn):
 	return verts, faces
 
 
-def mesh(model_id="", episode=0):
+def mesh(model_id="", episode=0, waypoint=False):
 	C1 = '\033[91m'
 	C1END = '\033[0m'
 	print(C1 + "PLOTTING EPISODE:" + C1END)
@@ -42,8 +42,7 @@ def mesh(model_id="", episode=0):
 	plt.xlabel('X Position'); plt.ylabel('Y Position')
 	plt.grid(True)
 
-	show_waypoint = 1
-	if show_waypoint:
+	if waypoint:
 		df = pandas.read_csv('euharlee_waypoints_sort.csv')
 		points = df.values
 		length = len(points)
@@ -66,74 +65,70 @@ def mesh(model_id="", episode=0):
 
 def read_file(ep_n=0):
 
-	debug=0
-	if debug:
-		print("hello")
-	else:
-		count = 0
-		for line in open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
-						 "_" + str(ep_n) + ".txt").readlines(): count += 1
+	count = 0
+	for line in open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+					 "_" + str(ep_n) + ".txt").readlines(): count += 1
 
-		timesteps = count
-		fn = np.arange(timesteps)
-		ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
-					  "_" + str(ep_n) + ".txt", "r")
+	timesteps = count
+	fn = np.arange(timesteps)
+	ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+				  "_" + str(ep_n) + ".txt", "r")
 
-		x_pos = np.zeros(timesteps)
-		y_pos = np.zeros(timesteps)
-		actions = np.zeros(timesteps)
-		tot_ret = np.zeros(timesteps)
+	x_pos = np.zeros(timesteps)
+	y_pos = np.zeros(timesteps)
+	actions = np.zeros(timesteps)
+	tot_ret = np.zeros(timesteps)
 
-		counter = 0; sum = 0
-		for line in ep_pos:
-			pos = line.split(";")
-			nframe = pos[0]
-			actions[counter] = pos[1]
-			x_pos[counter] = pos[2]
-			y_pos[counter] = pos[3]
-			sum += float(pos[4].replace('\n', ''))
-			tot_ret[counter] = sum
-			counter += 1
-			if nframe == str(timesteps):
-				break
+	counter = 0; sum = 0
+	for line in ep_pos:
+		pos = line.split(";")
+		nframe = pos[0]
+		actions[counter] = pos[1]
+		x_pos[counter] = pos[2]
+		y_pos[counter] = pos[3]
+		sum += float(pos[4].replace('\n', ''))
+		tot_ret[counter] = sum
+		counter += 1
+		if nframe == str(timesteps):
+			break
 
-		i_x = x_pos[0];	i_y = y_pos[0]
+	i_x = x_pos[0];	i_y = y_pos[0]
 
-		print("Episode: %i" % ep_n)
-		print("Mean Rew: %.2f" % np.mean(tot_ret))
-		print("---------------------------")
-		plt.style.use('seaborn') # switch to seaborn style
+	print("Episode: %i" % ep_n)
+	print("Mean Rew: %.2f" % np.mean(tot_ret))
+	print("---------------------------")
+	plt.style.use('seaborn') # switch to seaborn style
 
-		plt.title('Husky Path <%i>' % ep_n)
-		plt.xlabel('X Pos'); plt.ylabel('Y Pos')
-		plt.annotate('S: ({:.3g}),({:.3g})'.format(i_x, i_y), xy=(i_x, i_y), xytext=(i_x, i_y),
-					 arrowprops=dict(facecolor='black', shrink=0.05))
-		# plt.annotate('T: ({:.3g}),({:.3g})'.format(t_x,t_y), xy=(t_x, t_y), xytext=(t_x, t_y), arrowprops=dict(facecolor='blue', shrink=0.05))
-		plt.plot(x_pos, y_pos, 'r')
-		plt.grid(True)
+	plt.title('Husky Path <%i>' % ep_n)
+	plt.xlabel('X Pos'); plt.ylabel('Y Pos')
+	plt.annotate('S: ({:.3g}),({:.3g})'.format(i_x, i_y), xy=(i_x, i_y), xytext=(i_x, i_y),
+				 arrowprops=dict(facecolor='black', shrink=0.05))
+	# plt.annotate('T: ({:.3g}),({:.3g})'.format(t_x,t_y), xy=(t_x, t_y), xytext=(t_x, t_y), arrowprops=dict(facecolor='blue', shrink=0.05))
+	plt.plot(x_pos, y_pos, 'r')
+	plt.grid(True)
 
-		plt.subplot(1, 3, 2)
-		plt.title('Episode Reward <%i>' % ep_n)
-		plt.xlabel('Frames')
-		plt.plot(fn, tot_ret, 'b')
-		plt.grid(True)
-		plt.tight_layout()
+	plt.subplot(1, 3, 2)
+	plt.title('Episode Reward <%i>' % ep_n)
+	plt.xlabel('Frames')
+	plt.plot(fn, tot_ret, 'b')
+	plt.grid(True)
+	plt.tight_layout()
 
-		plt.subplot(1, 3, 3)
-		sns.distplot(actions)
-		plt.title('Behaviour of Actions')
-		plt.xlabel('Actions')
-		plt.ylabel('# of Actions')
-		plt.tight_layout()
+	plt.subplot(1, 3, 3)
+	sns.distplot(actions)
+	plt.title('Behaviour of Actions')
+	plt.xlabel('Actions')
+	plt.ylabel('# of Actions')
+	plt.tight_layout()
 
-		ep_pos.close()
-		plt.show()
+	ep_pos.close()
+	plt.show()
 
-		# the histogram of the data
-		#mu = 0; sigma=1
-		#num, bins, patches = plt.hist(actions, 50, density=1)
-		#y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (bins - mu))**2))
-		#plt.plot(bins, y, '--')
+	# the histogram of the data
+	#mu = 0; sigma=1
+	#num, bins, patches = plt.hist(actions, 50, density=1)
+	#y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (bins - mu))**2))
+	#plt.plot(bins, y, '--')
 
 def plot_csv():
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
@@ -169,10 +164,10 @@ def plot_csv():
 
 def main():
 	"This function shows that analysis of training process"
-	#plot_csv() #Reward Plotting
+	plot_csv() #Reward Plotting
 
 	for x in range(args.map):
-		mesh(model_id="Euharlee", episode=args.eps)
+		mesh(model_id="Euharlee", episode=args.eps, waypoint=True)
 		read_file(ep_n=args.eps)
 		args.eps += 1
 
@@ -180,7 +175,7 @@ def main():
 if __name__ == '__main__':
 	import argparse
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=70) # Number of episode
+	parser.add_argument('--eps', type=int, default=6005) # Number of episode
 	parser.add_argument('--map', type=int, default=3) # Number of shown map
 	args = parser.parse_args()
 	#mesh(model_id="Euharlee")

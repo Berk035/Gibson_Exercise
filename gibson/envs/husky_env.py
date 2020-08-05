@@ -43,6 +43,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
                                 tracking_camera=tracking_camera)
 
         self.robot_introduce(Husky(self.config, env=self))
+        #WARNING:Robot tanımının yapıldığı yer devam etmeli, aksi taktirde 'Bad inertia hatası'
         self.scene_introduce()
         self.total_reward = 0
         self.total_frame = 0
@@ -50,13 +51,12 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.hold_rew = 0
         self.success = 0
         self.SR = 0
+        self.SPL = 0
 
-        self.position = np.zeros(3);  self.old_pos = np.zeros(3)
-
-        # TODO:Episode üzerindeki değerlerin alınması gerekiyor!
-        self.shortest_path = np.linalg.norm([np.array(self.config["target_pos"])
-                                             - np.array(self.config["initial_pos"])])
-        self.actual_path = -5  # Offset for beggining
+        self.position = []
+        self.old_pos = []
+        self.shortest_path = 0
+        self.actual_path = 0  # Offset for beggining
 
 
     def add_text(self, img):
@@ -73,6 +73,8 @@ class HuskyNavigateEnv(CameraRobotEnv):
         return img
 
     def _rewards(self, action=None, debugmode=False):
+
+
         a = action
         potential_old = self.potential
         self.potential = self.robot.calc_potential()
@@ -87,24 +89,22 @@ class HuskyNavigateEnv(CameraRobotEnv):
         joints_at_limit_cost = float(self.joints_at_limit_cost * self.robot.joints_at_limit)
         # joints_at_limit_cost = 0
 
-        self.old_pos = self.position
+        self.shortest_path = np.linalg.norm([np.array(self.robot.target_pos)
+                                             - np.array(self.robot.initial_pos)])
+
         self.position = self.robot.get_position()
-        displacement = np.linalg.norm([self.position[1] - self.old_pos[1], self.position[0] - self.old_pos[0]])
+        if len(self.old_pos)==0:
+            displacement = 0
+        else:
+            displacement = np.linalg.norm([self.position[1] - self.old_pos[1], self.position[0] - self.old_pos[0]])
         self.actual_path += displacement
+        self.old_pos = self.position
 
-        self.success = 0
-
-        close_to_target = 0;
-        success_point = 0;
-        SPL = 0
-        path_ratio = (self.shortest_path / np.max([self.actual_path, self.shortest_path]))
-
+        close_to_target = 0
         # x_tar, y_tar, z_tar = self.robot.target_pos
         if self.robot.dist_to_target() <= THRESHOLD:
             close_to_target = 0.5
-            self.success = 1
 
-        SPL = self.success * path_ratio
         steering_cost = self.robot.steering_cost(a)
         angle_cost = self.robot.angle_cost()
         feet_collision_cost = self.robot.feet_col(self.ground_ids, self.foot_collision_cost)
@@ -129,7 +129,6 @@ class HuskyNavigateEnv(CameraRobotEnv):
             wall_collision_cost,  # It  has 0.3~0.1 values edit:0.5
             steering_cost,  # It has -0.1 values when the agent turns
             close_to_target,  # It returns reward step by step between 0.25~0.75
-            # SPL #Success weighted by path length
             # feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
             # joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
@@ -162,7 +161,6 @@ class HuskyNavigateEnv(CameraRobotEnv):
         cv2.waitKey(1)
         cv2.imwrite(os.path.join(path, 'FRAME_%i.jpg') %self.nframe, img_depth)'''
 
-        debugmode = 0
         if (debugmode):
             print("------------------------")
             # print("Episode Frame: {}".format(self.nframe))
@@ -180,7 +178,6 @@ class HuskyNavigateEnv(CameraRobotEnv):
             # print("Collision cost: {:.3f}" .format(wall_collision_cost))
             # print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
             # print("Close to target: {:.2f}".format(close_to_target))
-            # print("SPL: %.3f" % SPL)
             # print("ACTUAL:%.2f\t"%self.actual_path + str("SHORTEST:%.2f"%self.shortest_path))
             # print("Rewards: {:.3f} " .format(sum(rewards)))
             # print("Total Eps Rewards: {:.3f} ".format(self.eps_reward))
@@ -194,25 +191,30 @@ class HuskyNavigateEnv(CameraRobotEnv):
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch)) > 0
         # alive = len(self.robot.parts['top_bumper_link'].contact_list()) == 0
-        success = 0
 
         done = not alive or self.nframe > (self.config['n_step'] - 1) or height < 0 or \
         self.robot.dist_to_target() <= THRESHOLD
         if done:
             self.eps_so_far += 1
             self.actual_path = 0
-            self.old_pos = np.zeros(3)
+            self.position = []
+            self.old_pos = []
+            self.shortest_path = 0
+            self.SPL = 0
 
             if self.robot.dist_to_target() <= THRESHOLD:
-                success=1
-                self.SR+=1
+                self.success=1
+                self.SR+= self.success
+                self.SPL = self.success * (self.shortest_path/max(self.actual_path,self.shortest_path))
 
             if debugmode:
                 CRED = '\033[91m'
                 CEND = '\033[0m'
                 print(CRED + "Episode reset!" + CEND)
-                print("Episodes -----> %i/%s" % (self.eps_so_far, str(self.config["n_episode"])))
+                print("Episodes -----> %i/%s" % ((self.eps_so_far % int(self.config["n_episode"])),
+                                                  str(self.config["n_episode"])))
                 print("SR: %.2f" % (self.SR/self.eps_so_far*100))
+                print("SPL: %.2f" % self.SPL)
 
         return done
 
