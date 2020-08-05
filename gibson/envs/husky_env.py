@@ -205,6 +205,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
             if self.robot.dist_to_target() <= THRESHOLD:
                 self.success=1
                 self.SR+= self.success
+                #TODO:This part requires revising
                 self.SPL = self.success * (self.shortest_path/max(self.actual_path,self.shortest_path))
 
             if debugmode:
