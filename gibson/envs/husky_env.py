@@ -9,6 +9,7 @@ import pybullet as p
 from gibson.core.physics.scene_stadium import SinglePlayerStadiumScene
 import pybullet_data
 import cv2
+import csv
 
 THRESHOLD = 0.4
 FLAG_LIMIT = 3000
@@ -56,24 +57,9 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.position = []
         self.old_pos = []
         self.shortest_path = 0
-        self.actual_path = 0  # Offset for beggining
-
-
-    def add_text(self, img):
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        # font = cv2.FONT_HERSHEY_PLAIN
-        # x,y,z = self.robot.get_position()
-        # r,p,ya = self.robot.get_rpy()
-
-        cv2.putText(img, 'Reward:{0:.3f}'.format(self.hold_rew), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
-        # cv2.putText(img, 'x:{0:.2f} y:{1:.2f} z:{2:.2f}'.format(x,y,z), (10, 100), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
-        # cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
-        # cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
-        # cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
-        return img
+        self.actual_path = 0
 
     def _rewards(self, action=None, debugmode=False):
-
 
         a = action
         potential_old = self.potential
@@ -133,34 +119,6 @@ class HuskyNavigateEnv(CameraRobotEnv):
             # joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
 
-        # Episode Recording
-        record = 0
-        if record:
-            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards"
-            try:
-                os.mkdir(file_path)
-            except OSError:
-                pass
-
-            if self.nframe == 1:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards/positions" +
-                              "_" + str(self.eps_count) + ".txt", "w")
-            else:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/rewards/positions" +
-                              "_" + str(self.eps_count) + ".txt", "a")
-            ep_pos.write("%i;%.3f" % (self.nframe, path_ratio) + "\n")
-            ep_pos.close()
-
-        '''img_depth = self.add_text(self.render_depth)
-        path="/home/berk/PycharmProjects/Gibson_Exercise/examples/train/output_frames"
-        try:
-            os.mkdir(path)
-        except OSError:
-            pass
-        cv2.imshow('Depth', img_depth)
-        cv2.waitKey(1)
-        cv2.imwrite(os.path.join(path, 'FRAME_%i.jpg') %self.nframe, img_depth)'''
-
         if (debugmode):
             print("------------------------")
             # print("Episode Frame: {}".format(self.nframe))
@@ -196,26 +154,54 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.robot.dist_to_target() <= THRESHOLD
         if done:
             self.eps_so_far += 1
-            self.actual_path = 0
-            self.position = []
-            self.old_pos = []
-            self.shortest_path = 0
-            self.SPL = 0
 
             if self.robot.dist_to_target() <= THRESHOLD:
                 self.success=1
                 self.SR+= self.success
-                #TODO:This part requires revising
                 self.SPL = self.success * (self.shortest_path/max(self.actual_path,self.shortest_path))
 
             if debugmode:
                 CRED = '\033[91m'
                 CEND = '\033[0m'
                 print(CRED + "Episode reset!" + CEND)
-                print("Episodes -----> %i/%s" % ((self.eps_so_far % int(self.config["n_episode"])),
-                                                  str(self.config["n_episode"])))
-                print("SR: %.2f" % (self.SR/self.eps_so_far*100))
-                print("SPL: %.2f" % self.SPL)
+                #print("Episodes -----> %i/%s" % ((self.eps_so_far % int(self.config["n_episode"])),
+                #                                  str(self.config["n_episode"])))
+                print("Episodes -----> %i" %self.eps_so_far)
+                print("SR: %.2f" % (self.SR/self.eps_so_far*100) +str("\t")+ str("SPL: %.2f" % self.SPL))
+
+            record = 1
+            if record:
+                file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/success"
+                try:
+                    os.mkdir(file_path)
+                except OSError:
+                    pass
+
+                if self.eps_so_far == 1:
+                    with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv',
+                              'w', newline='') as csvfile:
+                        fieldnames = ['Episode','Success Rate', 'SPL']
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                        writer.writeheader()
+                        writer.writerow({'Episode': self.eps_so_far,
+                                         'Success Rate': (self.SR / self.eps_so_far * 100),
+                                         'SPL': (self.SPL)})
+                else:
+                    with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv',
+                              'a', newline='') as csvfile:
+                        fieldnames = ['Episode','Success Rate', 'SPL']
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                        writer.writerow({'Episode': self.eps_so_far,
+                                         'Success Rate': (self.SR / self.eps_so_far * 100),
+                                         'SPL': (self.SPL)})
+
+            self.actual_path = 0
+            self.position = []
+            self.old_pos = []
+            self.shortest_path = 0
+            self.SPL = 0
 
         return done
 
@@ -628,22 +614,5 @@ def get_obstacle_penalty(robot, depth):
         print("Obstacle screen", screen_sz, screen_delta)
         print("Obstacle distance: {:.3f}".format(obstacle_dist))
         print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
-
-        path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/frame_penalty"
-        try:
-            os.mkdir(path)
-        except OSError:
-            pass
-
-        clip = depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
-               screen_half - screen_delta: screen_half + screen_delta, -1]
-        width, height = int(depth.shape[0]), int(depth.shape[1])
-        dim = (width, height)
-
-        # resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
-        # cv2.imwrite(os.path.join(path, 'Frame_Dist_Penalty_{:.3g}-{:.3g}.jpg') .format(obstacle_dist,obstacle_penalty), resized_clip)
-        depth = cv2.convertScaleAbs(depth, alpha=(255.0))
-        cv2.imwrite(os.path.join(path, 'Frame_Dist_Penalty_{:.3g}-{:.3g}.jpg').format(obstacle_dist, obstacle_penalty),
-                    depth)
 
     return obstacle_penalty

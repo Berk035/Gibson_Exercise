@@ -33,7 +33,7 @@ def mesh(model_id="", episode=0, waypoint=False):
 	cross_section = meshcut.cross_section(verts, faces, plane_orig=(0, 0, z), plane_normal=(0, 0, 1))
 
 	plt.figure(figsize=(16, 8))
-	plt.subplot(1, 3, 1)
+	plt.subplot(1, 2, 1)
 	for item in cross_section:
 		for i in range(len(item) - 1):
 			plt.plot(item[i:i + 2, 0], item[i:i + 2, 1], 'k')
@@ -43,7 +43,8 @@ def mesh(model_id="", episode=0, waypoint=False):
 	plt.grid(True)
 
 	if waypoint:
-		df = pandas.read_csv('euharlee_waypoints_sort.csv')
+		#df = pandas.read_csv('euharlee_waypoints_sort.csv')
+		df = pandas.read_csv('euharlee_waypoints_clipped_sort.csv')
 		points = df.values
 		length = len(points)
 		sp = np.zeros((length, 3)); ang = np.zeros((length, 1)); gp = np.zeros((length, 3))
@@ -107,19 +108,26 @@ def read_file(ep_n=0):
 	plt.plot(x_pos, y_pos, 'r')
 	plt.grid(True)
 
-	plt.subplot(1, 3, 2)
+	plt.subplot(1, 2, 2)
 	plt.title('Episode Reward <%i>' % ep_n)
 	plt.xlabel('Frames')
 	plt.plot(fn, tot_ret, 'b')
 	plt.grid(True)
 	plt.tight_layout()
 
-	plt.subplot(1, 3, 3)
+	'''plt.subplot(1, 3, 3)
 	sns.distplot(actions)
 	plt.title('Behaviour of Actions')
 	plt.xlabel('Actions')
 	plt.ylabel('# of Actions')
 	plt.tight_layout()
+
+	plt.subplot(1, 3, 3)
+	sns.distplot(SPL)
+	plt.title('Success Weighted by Path Length')
+	plt.xlabel('Amount')
+	plt.ylabel('Episodes')
+	plt.tight_layout()'''
 
 	ep_pos.close()
 	plt.show()
@@ -161,10 +169,32 @@ def plot_csv():
 
 	plt.show()
 
+def plot_spl():
+	"Plotting iterations vs reward, entrophy loss,value loss graphs"
+	C1 = '\033[94m'
+	C1END = '\033[0m'
+	print(C1 + "PLOTTING SUCCESS:" + C1END)
+
+	data = pd.read_csv("/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv")
+	sns.set(style="darkgrid", context="paper")
+	fig, axes = plt.subplots(figsize=(8,4),nrows=1, ncols=2)
+	plt.subplots_adjust(wspace=1, hspace=1)
+	d1 = data["Success Rate"]
+	d2 = data["SPL"]
+	fig.add_subplot(axes[0])
+	sns.lineplot(x="Episode", y=d1, data=data, ax=axes[0], color='blue', label="Success Rate")
+	plt.fill_between(data["Episode"], d1 - np.std(d1), d1 + np.std(d1), color='b', alpha=0.2)
+	fig.add_subplot(axes[1])
+	sns.distplot(d2, ax=axes[1], color='red', label="SPL for each eps.")
+	plt.legend()
+	fig.tight_layout()
+	plt.show()
+
 
 def main():
 	"This function shows that analysis of training process"
 	plot_csv() #Reward Plotting
+	plot_spl()
 
 	for x in range(args.map):
 		mesh(model_id="Euharlee", episode=args.eps, waypoint=True)
@@ -175,7 +205,7 @@ def main():
 if __name__ == '__main__':
 	import argparse
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=6005) # Number of episode
+	parser.add_argument('--eps', type=int, default=403) # Number of episode
 	parser.add_argument('--map', type=int, default=3) # Number of shown map
 	args = parser.parse_args()
 	#mesh(model_id="Euharlee")

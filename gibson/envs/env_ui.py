@@ -65,12 +65,10 @@ class SimpleUI():
         assert(tag in self.components), "Invalid view tag " + view
         self.nframe += 1
         if self.save_first and self.nframe <= len(self.POS):
-            import scipy.misc
             img = np.zeros((view.shape[0], view.shape[1], 3))
             img[:, :, :] = view
 
-            #scipy.misc.imsave("Img%d.png" % self.nframe, img) Deprecated!!
-            imageio.imwrite("Img%d.png" % self.nframe, img)
+            #imageio.imwrite("Img%d.png" % self.nframe, img)
 
         for index, component in enumerate(self.components):
             if tag == component:
@@ -93,10 +91,10 @@ class SimpleUI():
             screen_to_dump = cv2.cvtColor(self.screen_arr.transpose(1, 0, 2), cv2.COLOR_BGR2RGB)
             cv2.imshow("Recording", screen_to_dump)
             cmd=cv2.waitKey(5)%256
-            #if cmd == ord('r'):
-            self.start_record()
-            #if cmd == ord('q'):
-                #self.end_record()
+            if cmd == ord('r'):
+                self.start_record()
+            if cmd == ord('q'):
+                self.end_record()
 
             if self.is_recording:
                 #self.curr_output.write(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -115,9 +113,9 @@ class SimpleUI():
 
         self.socket.send(b"ui" + screen)
 
-        debug = 0
+        debug = 1
         if debug:
-            path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/frame_ui"
+            path = "/home/berk/PycharmProjects/Gibson_Exercise/Gibson_Exercise/utils/user_int"
             try:
                 os.mkdir(path)
             except OSError:

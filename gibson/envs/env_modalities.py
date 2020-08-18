@@ -189,13 +189,13 @@ class BaseRobotEnv(BaseEnv):
         debugmode = 0
         if debugmode:
             print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
-            #print("Frame Reward: %.5f" % sum(self.rewards))
-            #print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
-            #print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            # print("Frame Reward: %.5f" % sum(self.rewards))
+            # print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
+            # print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
             print("-------------------------------")
 
         self.rewards = self._rewards(a)
-        done = self._termination()
+        done= self._termination()
 
         self.reward += sum(self.rewards)
         self.eps_reward += sum(self.rewards)
@@ -246,33 +246,6 @@ class BaseRobotEnv(BaseEnv):
 
             ep_pos.write("%i;%i;%.3f;%.3f;%.3f" % (self.nframe, a, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
             ep_pos.close()
-
-        '''record = 1
-        if record:
-            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
-            try:
-                os.mkdir(file_path)
-            except OSError:
-                pass
-
-            if self.eps_count == 1 and self.nframe == 1:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
-                          +str(self.it_count)+'.csv', 'w', newline='') as csvfile:
-                    fieldnames = ['Episode','Frame','Position_X','Position_Y','Reward']
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                    writer.writeheader()
-                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
-                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})
-            else:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions_'
-                          +str(self.it_count)+'.csv', 'a', newline='') as csvfile:
-                    fieldnames = ['Episode', 'Frame', 'Position_X', 'Position_Y', 'Reward']
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                    writer.writerow({'Episode': self.eps_count, 'Frame': self.nframe,
-                                     'Position_X': body_xyz[0], 'Position_Y': body_xyz[1], 'Reward': sum(self.rewards)})'''
-
 
         return observations, sum(self.rewards), bool(done), dict(eye_pos=eye_pos, eye_quat=eye_quat, episode=episode)
 
@@ -440,6 +413,16 @@ class CameraRobotEnv(BaseRobotEnv):
         return observations #, sensor_state
 
     def add_text(self, img):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        # font = cv2.FONT_HERSHEY_PLAIN
+        #x,y,z = self.robot.get_position()
+        # r,p,ya = self.robot.get_rpy()
+
+        cv2.putText(img, 'ObsDist:{0:.3f}'.format(np.mean(img)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'x:{0:.2f} y:{1:.2f} z:{2:.2f}'.format(x,y,z), (10, 100), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        # cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(img, 'fps:{0:.4f}'.format(self.fps), (10, 80), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
         return img
 
     def _step(self, a):
@@ -472,6 +455,7 @@ class CameraRobotEnv(BaseRobotEnv):
         else:
             if self.config["show_diagnostics"] and self._require_rgb:
                 self.render_rgb_filled = self.add_text(self.render_rgb_filled)
+                self.render_depth = self.add_text(self.render_depth)
 
             robot_pos = self.robot.get_position()
             robot_orn = self.robot.get_rpy()
@@ -491,6 +475,27 @@ class CameraRobotEnv(BaseRobotEnv):
             scaled_depth = scaled_depth * DEPTH_SCALE_FACTOR + DEPTH_OFFSET_FACTOR
             overflow = scaled_depth > 255.
             scaled_depth[overflow] = 255.
+
+            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images"
+            path_2 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_clipped"
+            try:
+                os.mkdir(path_1)
+                os.mkdir(path_2)
+            except OSError:
+                pass
+
+            screen_half = int(self.robot.resolution / 2)
+            height_offset = int(self.robot.resolution / 4)
+            screen_delta = int(self.robot.resolution / 8)
+            clip = scaled_depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
+                screen_half - screen_delta: screen_half + screen_delta, -1]
+            clip = self.add_text(clip)
+            # width, height = int(depth.shape[0]), int(depth.shape[1])
+            # dim = (width, height)
+            # resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
+            # depth = cv2.convertScaleAbs(depth, alpha=(255.0))
+            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(self.nframe), scaled_depth)
+            cv2.imwrite(os.path.join(path_2, 'Frame_{:d}.jpg').format(self.nframe), clip)
 
 
             #Deprecated !!!!!!
@@ -599,6 +604,7 @@ class CameraRobotEnv(BaseRobotEnv):
                 observations[output] = getattr(self, "render_" + output)
             except Exception as e:
                 raise Exception("Output component {} is not available".format(output))
+
 
         #visuals = np.concatenate(visuals, 2)
         return observations
