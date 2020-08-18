@@ -113,9 +113,9 @@ class SimpleUI():
 
         self.socket.send(b"ui" + screen)
 
-        debug = 1
+        debug = 0
         if debug:
-            path = "/home/berk/PycharmProjects/Gibson_Exercise/Gibson_Exercise/utils/user_int"
+            path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/user_int"
             try:
                 os.mkdir(path)
             except OSError:

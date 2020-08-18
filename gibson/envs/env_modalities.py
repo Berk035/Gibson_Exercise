@@ -418,7 +418,14 @@ class CameraRobotEnv(BaseRobotEnv):
         #x,y,z = self.robot.get_position()
         # r,p,ya = self.robot.get_rpy()
 
-        cv2.putText(img, 'ObsDist:{0:.3f}'.format(np.mean(img)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        screen_half = int(self.robot.resolution / 2)
+        height_offset = int(self.robot.resolution / 4)
+        screen_delta = int(self.robot.resolution / 4)
+        sensor = self.render_depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
+               screen_half - screen_delta: screen_half + screen_delta, -1]
+
+        cv2.putText(img, 'ObsDist:{:.3f}'.format(np.mean(sensor)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        #cv2.putText(img, 'ObsPen:{:.3f}'.format(np.mean(sensor)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
         #cv2.putText(img, 'x:{0:.2f} y:{1:.2f} z:{2:.2f}'.format(x,y,z), (10, 100), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
         # cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
         # cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
@@ -455,7 +462,6 @@ class CameraRobotEnv(BaseRobotEnv):
         else:
             if self.config["show_diagnostics"] and self._require_rgb:
                 self.render_rgb_filled = self.add_text(self.render_rgb_filled)
-                self.render_depth = self.add_text(self.render_depth)
 
             robot_pos = self.robot.get_position()
             robot_orn = self.robot.get_rpy()
@@ -475,48 +481,25 @@ class CameraRobotEnv(BaseRobotEnv):
             scaled_depth = scaled_depth * DEPTH_SCALE_FACTOR + DEPTH_OFFSET_FACTOR
             overflow = scaled_depth > 255.
             scaled_depth[overflow] = 255.
+            if self.config["show_diagnostics"]:
+                scaled_depth = self.add_text(scaled_depth)
 
-            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images"
-            path_2 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_clipped"
-            try:
-                os.mkdir(path_1)
-                os.mkdir(path_2)
-            except OSError:
-                pass
+            record=0
+            if record:
+                path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_episode"
+                try:
+                    os.mkdir(path_1)
+                except OSError:
+                    pass
 
-            screen_half = int(self.robot.resolution / 2)
-            height_offset = int(self.robot.resolution / 4)
-            screen_delta = int(self.robot.resolution / 8)
-            clip = scaled_depth[screen_half + height_offset - screen_delta: screen_half + height_offset + screen_delta,
-                screen_half - screen_delta: screen_half + screen_delta, -1]
-            clip = self.add_text(clip)
-            # width, height = int(depth.shape[0]), int(depth.shape[1])
-            # dim = (width, height)
-            # resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
-            # depth = cv2.convertScaleAbs(depth, alpha=(255.0))
-            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(self.nframe), scaled_depth)
-            cv2.imwrite(os.path.join(path_2, 'Frame_{:d}.jpg').format(self.nframe), clip)
-
-
-            #Deprecated !!!!!!
-            #cv2.imshow('Depth', scaled_depth)
-            #cv2.waitKey(1)
-            # debug=0
-            # if debug:
-            #     path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/frame_penalty_env"
-            #     try:
-            #         os.mkdir(path)
-            #     except OSError:
-            #         pass
-            #
-            #     width, height = int(scaled_depth.shape[0]), int(scaled_depth.shape[1])
-            #     dim = (width, height)
-            #     #resized_clip = self.add_text(cv2.convertScaleAbs(cv2.resize(scaled_depth, dim, interpolation=cv2.INTER_AREA), alpha=(255.0)))
-            #     self.add_text(scaled_depth)
-            #     cv2.imwrite(os.path.join(path, 'Frame_Penalty_(%.3f).jpg') % (self.reward-self.penalty), scaled_depth)
-            #     self.penalty = self.reward
+                # width, height = int(depth.shape[0]), int(depth.shape[1])
+                # dim = (width, height)
+                # resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
+                # depth = cv2.convertScaleAbs(depth, alpha=(255.0))
+                cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(self.nframe), scaled_depth)
 
             return scaled_depth
+
         if tag == View.NORMAL:
             return self.render_normal
         if tag == View.SEMANTICS:

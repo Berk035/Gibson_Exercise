@@ -94,6 +94,18 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         obs_sensor[i] = ob_sensor
         obs[i] = ob
 
+        record_depth=0
+        if record_depth:
+            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration"
+            try:
+                os.mkdir(path_1)
+            except OSError:
+                pass
+            ob1 = ob * 35 + 20 #DEPTH SCALE FACTOR and DEPTH SCALE OFFSET
+            overflow = ob1 > 255.
+            ob1[overflow] = 255.
+            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(t), ob1)
+
         vpreds[i] = vpred
         news[i] = new
         acs[i] = ac
@@ -106,14 +118,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         ob = ob_all['depth']
         rews[i] = rew
 
-        # path = "/home/berk/PycharmProjects/Gibson_Exercise/examples/train/output_frames"
-        # try:
-        #     os.mkdir(path)
-        # except OSError:
-        #     pass
-        # cv2.imshow('Depth', ob_all['depth'])
-        # cv2.waitKey(1)
-        # cv2.imwrite(os.path.join(path, 'FRAME_%i.jpg'), ob_all['depth'])
 
         cur_ep_ret += rew
         cur_ep_len += 1
