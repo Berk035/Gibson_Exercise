@@ -15,6 +15,7 @@ THRESHOLD = 0.4
 FLAG_LIMIT = 3000
 CALC_OBSTACLE_PENALTY = 1
 CALC_GEODESIC_REW = 0
+ALPHA = 0.5
 
 tracking_camera = {
     'yaw': 110,
@@ -95,7 +96,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         angle_cost = self.robot.angle_cost()
         feet_collision_cost = self.robot.feet_col(self.ground_ids, self.foot_collision_cost)
 
-        obstacle_penalty = 1
+        obstacle_penalty = 0
         if CALC_OBSTACLE_PENALTY and self._require_camera_input:
             obstacle_penalty = get_obstacle_penalty(self.robot, self.render_depth)
 
@@ -104,15 +105,15 @@ class HuskyNavigateEnv(CameraRobotEnv):
         height = self.position[2]
         alive = float(self.robot.alive_bonus(height, pitch))
 
-        # progress = -0.1
+        progress *=ALPHA; angle_cost*=ALPHA
 
         rewards = [
             # WARNING:all rewards have rew/frame units and close to 1.0
             alive,  # It has 1 or 0 values
-            progress,  # It calculates between two frame for target distance
-            obstacle_penalty,  # TODO: Aldığı değerlerin etkisi çok düşük
+            progress,  # It calculates between two frame for target distance (-0.6,0.6)
+            obstacle_penalty,  # It changes between (0,-0.350) penalty values.
             angle_cost,  # It has -0.6~0 values for tend to target
-            wall_collision_cost,  # It  has 0.3~0.1 values edit:0.5
+            wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
             steering_cost,  # It has -0.1 values when the agent turns
             close_to_target,  # It returns reward step by step between 0.25~0.75
             # feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
@@ -120,7 +121,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         ]
 
         if (debugmode):
-            print("------------------------")
+            #print("------------------------")
             # print("Episode Frame: {}".format(self.nframe))
             # print("Target Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x_tar,y_tar,z_tar))
             # print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
@@ -137,14 +138,14 @@ class HuskyNavigateEnv(CameraRobotEnv):
             # print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
             # print("Close to target: {:.2f}".format(close_to_target))
             # print("ACTUAL:%.2f\t"%self.actual_path + str("SHORTEST:%.2f"%self.shortest_path))
-            # print("Rewards: {:.3f} " .format(sum(rewards)))
+            print("Rewards: {:.3f} " .format(sum(rewards)))
             # print("Total Eps Rewards: {:.3f} ".format(self.eps_reward))
             # print("-----------------------")
 
         self.hold_rew = sum(rewards)
         return rewards
 
-    def _termination(self, debugmode=True):
+    def _termination(self, debugmode=False):
         height = self.robot.get_position()[2]
         pitch = self.robot.get_rpy()[1]
         alive = float(self.robot.alive_bonus(height, pitch)) > 0

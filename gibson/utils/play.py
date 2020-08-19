@@ -150,8 +150,8 @@ def play(env, transpose=True, zoom=None, callback=None, keys_to_action=None):
             
         last_keys = key_codes
 
-        if env_done:
-            env.reset()
+        #if env_done:
+        #    env.reset()
 
 class PlayPlot(object):
     def __init__(self, callback, horizon_timesteps, plot_names):
