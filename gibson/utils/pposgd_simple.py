@@ -11,9 +11,10 @@ from gibson.core.render.profiler import Profiler
 import os
 import tempfile
 import cloudpickle
-import zipfile
-#from gibson.envs.husky_env import HuskyNavigateEnv
-#from examples.train.exercise_files import plot_pos_fix_targ
+import zipfile, csv
+import sys
+import matplotlib.pyplot as plt, cv2
+
 
 def save(self, path=None):
     """Save model to a pickle located at `path`"""
@@ -51,10 +52,7 @@ def load(path):
 
 
 #Iteration döngüsü
-def traj_segment_generator(pi, env, horizon, stochastic, sensor=False, mode_plot=None):
-    # config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'examples', 'configs', 'config_deneme.yaml')
-    # raw_env = HuskyNavigateEnv(config=config_file)
-    # batch = raw_env.config["n_batch"]
+def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
     t = 0
     ac = env.action_space.sample() # not used, just so we have the datatype
     new = True # marks if we're on first timestep of an episode
@@ -100,12 +98,23 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False, mode_plot
             ep_lens = []
         i = t % horizon
 
-        #ac = 4 #Stop Only for Test!!!!!
 
         if sensor:
             obs[i] = ob_sensor
         else:
             obs[i] = ob
+
+        record_depth=0
+        if record_depth:
+            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration"
+            try:
+                os.mkdir(path_1)
+            except OSError:
+                pass
+            ob1 = ob * 35 + 20 #DEPTH SCALE FACTOR and DEPTH SCALE OFFSET
+            overflow = ob1 > 255.
+            ob1[overflow] = 255.
+            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(t), ob1)
 
         vpreds[i] = vpred
         news[i] = new
@@ -123,15 +132,7 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False, mode_plot
 
         cur_ep_ret += rew
         cur_ep_len += 1
-
         if new:
-            #print("Episodes ---------------> %i / %s" % (len(ep_lens)+1, str(batch)))
-            #ep_counter += 1
-            #plot=0
-            #if plot:
-                #print("ENJOY MODE PROCESS...!")
-                #plot_pos_fix_targ.read_file(ep_n=ep_counter, target=mode_plot)
-
             ep_rets.append(cur_ep_ret)
             ep_lens.append(cur_ep_len)
             cur_ep_ret = 0
@@ -154,8 +155,8 @@ def add_vtarg_and_adv(seg, gamma, lam):
     rew = seg["rew"]
     lastgaelam = 0
     for t in reversed(range(T)):
-        nonterminal = 1-new[t+1]
-        delta = rew[t] + gamma * vpred[t+1] * nonterminal - vpred[t]
+        nonterminal = 1 - new[t + 1]
+        delta = rew[t] + gamma * vpred[t + 1] * nonterminal - vpred[t]
         gaelam[t] = lastgaelam = delta + gamma * lam * nonterminal * lastgaelam
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
 
@@ -185,9 +186,8 @@ def learn(env, policy_func, *,
     oldpi = policy_func("oldpi", ob_space, ac_space) # Network for old policy
     atarg = tf.placeholder(dtype=tf.float32, shape=[None]) # Target advantage function (if applicable)
     ret = tf.placeholder(dtype=tf.float32, shape=[None]) # Empirical return
-
     lrmult = tf.placeholder(name='lrmult', dtype=tf.float32, shape=[]) # learning rate multiplier, updated with schedule
-    clip_param = clip_param * lrmult # Annealed cliping parameter epislon
+    clip_param = clip_param * lrmult # Annealed cliping parameter epsilon
 
     ob = U.get_placeholder_cached(name="ob")
     ac = pi.pdtype.sample_placeholder([None])
@@ -223,9 +223,11 @@ def learn(env, policy_func, *,
         saver.restore(tf.get_default_session(), reload_name)
         print("Loaded model successfully.")
 
+    # from IPython import embed; embed()
+    # Prepare for rollouts
     # ----------------------------------------
     seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True,
-                                     sensor = sensor, mode_plot=None)
+                                     sensor = sensor)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -259,7 +261,6 @@ def learn(env, policy_func, *,
 
         seg = seg_gen.__next__()
         add_vtarg_and_adv(seg, gamma, lam)
-        #print("Iteration %i is completed!" % (iters_so_far+1))
 
         # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
         ob, ac, atarg, tdlamret = seg["ob"], seg["ac"], seg["adv"], seg["tdlamret"]
@@ -308,30 +309,47 @@ def learn(env, policy_func, *,
         elapse = time.time() - tstart
         logger.record_tabular("TimeElapsed", elapse)
 
-        record=1
+        #Iteration Recording
+        record = 1
         if record:
             file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
-            if iters_so_far==1:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-                              ".txt", "w")
-            else:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values" + "_" +
-                              ".txt", "a")
-            #ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f;LossEnt:%.3f;LossVF:%.3f;Time:%.3f"
-            ep_pos.write("Iteration:%i;TimeSteps:%i;Rew:%.3f"%(iters_so_far,timesteps_so_far,np.mean(rews)) + "\n")
-            ep_pos.close()
 
-        if MPI.COMM_WORLD.Get_rank()==0:
+            if iters_so_far == 1:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                          'w', newline='') as csvfile:
+                    fieldnames = ['Iteration', 'TimeSteps','Reward','LossEnt','LossVF','PolSur']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writeheader()
+                    writer.writerow({'Iteration':iters_so_far, 'TimeSteps':timesteps_so_far,
+                                     'Reward':np.mean(rews),'LossEnt':meanlosses[4],
+                                     'LossVF':meanlosses[2],'PolSur':meanlosses[1]})
+            else:
+                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                          'a', newline='') as csvfile:
+                    fieldnames = ['Iteration', 'TimeSteps', 'Reward', 'LossEnt', 'LossVF', 'PolSur']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                    writer.writerow({'Iteration': iters_so_far, 'TimeSteps': timesteps_so_far,
+                                     'Reward': np.mean(rews), 'LossEnt': meanlosses[4],
+                                     'LossVF': meanlosses[2],'PolSur':meanlosses[1]})
+
+
+        if MPI.COMM_WORLD.Get_rank() == 0:
             logger.dump_tabular()
+
+        load_number = 0
+        if not reload_name == None:
+            load_number = int(str(reload_name.split('_')[7]).split('.')[0])
 
         if save_name and (iters_so_far % save_per_acts == 0):
             base_path = os.path.dirname(os.path.abspath(__file__))
             print(base_path)
-            out_name = os.path.join(base_path, 'models', save_name + '_' + str(iters_so_far) + ".model")
+            out_name = os.path.join(base_path, 'models', save_name + '_' + str(iters_so_far+load_number) + ".model")
             U.save_state(out_name)
             print("Saved model successfully.")
 
@@ -351,20 +369,19 @@ def enjoy(env, policy_func, *,
         reload_name=None,
         target_pos=None
         ):
-    # Setup losses and stuff
-    # ----------------------------------------
     if sensor:
         ob_space = env.sensor_space
     else:
         ob_space = env.observation_space
     ac_space = env.action_space
-    pi = policy_func("pi", ob_space, ac_space) # Construct network for new policy
-    oldpi = policy_func("oldpi", ob_space, ac_space) # Network for old policy
-    atarg = tf.placeholder(dtype=tf.float32, shape=[None]) # Target advantage function (if applicable)
-    ret = tf.placeholder(dtype=tf.float32, shape=[None]) # Empirical return
 
-    lrmult = tf.placeholder(name='lrmult', dtype=tf.float32, shape=[]) # learning rate multiplier, updated with schedule
-    clip_param = clip_param * lrmult # Annealed cliping parameter epislon
+    pi = policy_func("pi", ob_space, ac_space)  # Construct network for new policy
+    oldpi = policy_func("oldpi", ob_space, ac_space)  # Network for old policy
+    atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
+    ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
+    lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
+                            shape=[])  # learning rate multiplier, updated with schedule
+    clip_param = clip_param * lrmult  # Annealed cliping parameter epsilon
 
     ob = U.get_placeholder_cached(name="ob")
     ac = pi.pdtype.sample_placeholder([None])
@@ -375,10 +392,10 @@ def enjoy(env, policy_func, *,
     meanent = tf.reduce_mean(ent)
     pol_entpen = (-entcoeff) * meanent
 
-    ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac)) # pnew / pold
-    surr1 = ratio * atarg # surrogate from conservative policy iteration
-    surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg #
-    pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2)) # PPO's pessimistic surrogate (L^CLIP)
+    ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac))  # pnew / pold
+    surr1 = ratio * atarg  # surrogate from conservative policy iteration
+    surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg  #
+    pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
     vf_loss = tf.reduce_mean(tf.square(pi.vpred - ret))
     total_loss = pol_surr + pol_entpen + vf_loss
     losses = [pol_surr, pol_entpen, vf_loss, meankl, meanent]
@@ -388,8 +405,9 @@ def enjoy(env, policy_func, *,
     lossandgrad = U.function([ob, ac, atarg, ret, lrmult], losses + [U.flatgrad(total_loss, var_list)])
     adam = MpiAdam(var_list, epsilon=adam_epsilon)
 
-    assign_old_eq_new = U.function([],[], updates=[tf.assign(oldv, newv)
-        for (oldv, newv) in zipsame(oldpi.get_variables(), pi.get_variables())])
+    assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
+                                                    for (oldv, newv) in
+                                                    zipsame(oldpi.get_variables(), pi.get_variables())])
     compute_losses = U.function([ob, ac, atarg, ret, lrmult], losses)
 
     U.initialize()
@@ -400,20 +418,21 @@ def enjoy(env, policy_func, *,
         saver.restore(tf.get_default_session(), reload_name)
         print("Loaded model successfully.")
 
-
+    # from IPython import embed; embed()
     # Prepare for rollouts
     # ----------------------------------------
     seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True,
-                                     sensor=sensor, mode_plot=target_pos)
+                                     sensor=sensor)
 
     episodes_so_far = 0
     timesteps_so_far = 0
     iters_so_far = 0
     tstart = time.time()
-    lenbuffer = deque(maxlen=100) # rolling buffer for episode lengths
-    rewbuffer = deque(maxlen=100) # rolling buffer for episode rewards
+    lenbuffer = deque(maxlen=100)  # rolling buffer for episode lengths
+    rewbuffer = deque(maxlen=100)  # rolling buffer for episode rewards
 
-    assert sum([max_iters>0, max_timesteps>0, max_episodes>0, max_seconds>0])==1, "Only one time constraint permitted"
+    assert sum([max_iters > 0, max_timesteps > 0, max_episodes > 0,
+                max_seconds > 0]) == 1, "Only one time constraint permitted"
 
     while True:
         if callback: callback(locals(), globals())
@@ -429,35 +448,28 @@ def enjoy(env, policy_func, *,
         if schedule == 'constant':
             cur_lrmult = 1.0
         elif schedule == 'linear':
-            cur_lrmult =  max(1.0 - float(timesteps_so_far) / max_timesteps, 0)
+            cur_lrmult = max(1.0 - float(timesteps_so_far) / max_timesteps, 0)
         else:
             raise NotImplementedError
 
-        logger.log("********** Iteration %i ************"%(iters_so_far+1))
+        logger.log("********** Iteration %i ************" % (iters_so_far + 1))
 
         seg = seg_gen.__next__()
         add_vtarg_and_adv(seg, gamma, lam)
 
         # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
         ob, ac, atarg, tdlamret = seg["ob"], seg["ac"], seg["adv"], seg["tdlamret"]
-        vpredbefore = seg["vpred"] # predicted value function before udpate
-        atarg = (atarg - atarg.mean()) / atarg.std() # standardized advantage function estimate
+        vpredbefore = seg["vpred"]  # predicted value function before udpate
+        atarg = (atarg - atarg.mean()) / atarg.std()  # standardized advantage function estimate
         d = Dataset(dict(ob=ob, ac=ac, atarg=atarg, vtarg=tdlamret), shuffle=not pi.recurrent)
         optim_batchsize = optim_batchsize or ob.shape[0]
 
-        if hasattr(pi, "ob_rms"): pi.ob_rms.update(ob) # update running mean/std for policy
+        if hasattr(pi, "ob_rms"): pi.ob_rms.update(ob)  # update running mean/std for policy
 
-        assign_old_eq_new() # set old parameter values to new parameter values
+        assign_old_eq_new()  # set old parameter values to new parameter values
         logger.log("Optimizing...")
         logger.log(fmt_row(13, loss_names))
         iters_so_far += 1
-        # # Here we do a bunch of optimization epochs over the data
-        # for _ in range(optim_epochs):
-        #     losses = [] # list of tuples, each of which gives the loss for a minibatch
-        #     for batch in d.iterate_once(optim_batchsize):
-        #         *newlosses, g = lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
-        #         adam.update(g, optim_stepsize * cur_lrmult)
-        #         losses.append(newlosses)
 
 
 

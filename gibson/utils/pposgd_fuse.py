@@ -50,7 +50,7 @@ def load(path):
         U.load_state(os.path.join(td, "model"))
     #return ActWrapper(act, act_params)
 
-
+#Iteration döngüsü
 def traj_segment_generator(pi, env, horizon, stochastic):
     t = 0
     ac = env.action_space.sample() # not used, just so we have the datatype
@@ -118,7 +118,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         ob = ob_all['depth']
         rews[i] = rew
 
-
         cur_ep_ret += rew
         cur_ep_len += 1
         if new:
@@ -137,7 +136,7 @@ def add_vtarg_and_adv(seg, gamma, lam):
     """
     Compute target value using TD(lambda) estimator, and advantage with GAE(lambda)
     """
-    new = np.append(seg["new"], 0)  # last element is only used for last vtarg, but we already zeroed it if last new = 1
+    new = np.append(seg["new"], 0) # last element is only used for last vtarg, but we already zeroed it if last new = 1
     vpred = np.append(seg["vpred"], seg["nextvpred"])
     T = len(seg["rew"])
     seg["adv"] = gaelam = np.empty(T, 'float32')
@@ -147,7 +146,6 @@ def add_vtarg_and_adv(seg, gamma, lam):
         nonterminal = 1 - new[t + 1]
         delta = rew[t] + gamma * vpred[t + 1] * nonterminal - vpred[t]
         gaelam[t] = lastgaelam = delta + gamma * lam * nonterminal * lastgaelam
-
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
 
 def learn(env, policy_func, *,
@@ -187,10 +185,10 @@ def learn(env, policy_func, *,
     meanent = tf.reduce_mean(ent)
     pol_entpen = (-entcoeff) * meanent
 
-    ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac))  # pnew / pold
-    surr1 = ratio * atarg  # surrogate from conservative policy iteration
-    surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg  #
-    pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
+    ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac)) # pnew / pold
+    surr1 = ratio * atarg # surrogate from conservative policy iteration
+    surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg #
+    pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2)) # PPO's pessimistic surrogate (L^CLIP)
     vf_loss = tf.reduce_mean(tf.square(pi.vpred - ret))
     total_loss = pol_surr + pol_entpen + vf_loss
     losses = [pol_surr, pol_entpen, vf_loss, meankl, meanent]
@@ -260,12 +258,12 @@ def learn(env, policy_func, *,
 
         if hasattr(pi, "ob_rms"): pi.ob_rms.update(ob_sensor)  # update running mean/std for policy (sensor output)
 
-        assign_old_eq_new()  # set old parameter values to new parameter values
+        assign_old_eq_new() # set old parameter values to new parameter values
         logger.log("Optimizing...")
         logger.log(fmt_row(13, loss_names))
         # Here we do a bunch of optimization epochs over the data
         for _ in range(optim_epochs):
-            losses = []  # list of tuples, each of which gives the loss for a minibatch
+            losses = [] # list of tuples, each of which gives the loss for a minibatch
             for batch in d.iterate_once(optim_batchsize):
                 *newlosses, g = lossandgrad(batch["ob"], batch["ob_sensor"], batch["ac"], batch["atarg"],
                                             batch["vtarg"], cur_lrmult)

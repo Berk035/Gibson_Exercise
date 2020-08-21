@@ -22,7 +22,6 @@ class CnnPolicy(object):
         sequence_length = None
 
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
-        print("CNNPolicy registering")
 
         x = ob / 255.0
         if kind == 'small': # from A3C paper
@@ -42,7 +41,6 @@ class CnnPolicy(object):
 
         ## Saver
         #self.saver = tf.train.Saver()
-
 
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)

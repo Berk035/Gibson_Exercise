@@ -105,7 +105,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         height = self.position[2]
         alive = float(self.robot.alive_bonus(height, pitch))
 
-        progress *=ALPHA; angle_cost*=ALPHA
+        #progress *=ALPHA; angle_cost*=ALPHA
 
         rewards = [
             # WARNING:all rewards have rew/frame units and close to 1.0
@@ -606,7 +606,7 @@ def get_obstacle_penalty(robot, depth):
                 screen_half - screen_delta: screen_half + screen_delta, -1]))
 
     obstacle_penalty = 0
-    OBSTACLE_LIMIT = 0.5
+    OBSTACLE_LIMIT = 1.5
     if obstacle_dist < OBSTACLE_LIMIT:
         obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
 
