@@ -4,6 +4,11 @@ import gym
 from baselines.common.distributions import make_pdtype
 #from gibson.core.render.profiler import Profiler
 
+from tensorflow import keras
+from tensorflow.keras import layers
+import numpy as np
+import datetime as dt
+
 class CnnPolicy(object):
     recurrent = False
     def __init__(self, name, ob_space, ac_space, session, save_per_acts=1e4, kind='large'):
@@ -24,23 +29,25 @@ class CnnPolicy(object):
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
 
         x = ob / 255.0
-        if kind == 'small': # from A3C paper
-            x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
-            x = U.flattenallbut0(x)
-            x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer = U.normc_initializer(1.0)))
 
-        elif kind == 'large': # Nature DQN
-            x = tf.nn.relu(U.conv2d(x, 32, "l1", [8, 8], [4, 4], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 64, "l2", [4, 4], [2, 2], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 64, "l3", [3, 3], [1, 1], pad="VALID"))
-            x = U.flattenallbut0(x)
-            x = tf.nn.relu(tf.layers.dense(x, 512, name='lin', kernel_initializer=U.normc_initializer(1.0)))
-        else:
-            raise NotImplementedError
+        x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
+        x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
+        x = tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
 
-        ## Saver
-        #self.saver = tf.train.Saver()
+        num_res_net_blocks = 10
+        for i in range(num_res_net_blocks):
+            input_data = x
+            for j in range(2):
+                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), [2, 2], pad="SAME"))
+            #x = tf.nn.batch_normalization(x)
+            #x = tf.nn.batch_normalization(x)
+            x = tf.nn.relu(tf.math.add(x,input_data))
+
+        x = tf.nn.relu(U.conv2d(x, 32, "out", [2, 2], pad="VALID"))
+        #x = tf.layers.average_pooling2d(x,pool_size=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
+        x = U.flattenallbut0(x)
+        x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+        x = tf.nn.dropout(x,0.5)
 
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)

@@ -205,8 +205,8 @@ def main():
 if __name__ == '__main__':
 	import argparse
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=5922) # Number of episode
-	parser.add_argument('--map', type=int, default=3) # Number of shown map
+	parser.add_argument('--eps', type=int, default=1296) # Number of episode
+	parser.add_argument('--map', type=int, default=2) # Number of shown map
 	args = parser.parse_args()
 	#mesh(model_id="Euharlee")
 	main()
