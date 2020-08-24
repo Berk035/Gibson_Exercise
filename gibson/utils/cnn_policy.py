@@ -3,11 +3,9 @@ import tensorflow as tf
 import gym
 from baselines.common.distributions import make_pdtype
 #from gibson.core.render.profiler import Profiler
-
-from tensorflow import keras
-from tensorflow.keras import layers
+import cv2,os
 import numpy as np
-import datetime as dt
+import matplotlib.pyplot as plt
 
 class CnnPolicy(object):
     recurrent = False
@@ -29,8 +27,28 @@ class CnnPolicy(object):
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
 
         x = ob / 255.0
+        #print(x)
 
-        x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
+        print(x.shape)
+        #ob = np.reshape(ob,(128,128))
+        #plt.imshow(x, cmap='Greys')
+        #plt.show()
+
+        '''
+        record_depth = 1
+        if record_depth:
+            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/depth_images_iteration"
+            try:
+                os.mkdir(path_1)
+            except OSError:
+                pass
+            x = x * 35 + 20  # DEPTH SCALE FACTOR and DEPTH SCALE OFFSET
+            overflow = x > 255.
+            x[overflow] = 255.
+            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(self.total_count), x)
+        self.total_count += 1'''
+
+        '''x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
         x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
         x = tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
 
@@ -44,10 +62,10 @@ class CnnPolicy(object):
             x = tf.nn.relu(tf.math.add(x,input_data))
 
         x = tf.nn.relu(U.conv2d(x, 32, "out", [2, 2], pad="VALID"))
-        #x = tf.layers.average_pooling2d(x,pool_size=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
+        '''#x = tf.layers.average_pooling2d(x,pool_size=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
         x = U.flattenallbut0(x)
-        x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
-        x = tf.nn.dropout(x,0.5)
+        #x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+        #x = tf.nn.dropout(x,0.5)
 
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
@@ -65,9 +83,21 @@ class CnnPolicy(object):
         ac1, vpred1 =  self._act(stochastic, ob[None])
         self.total_count = self.total_count + 1
         self.curr_count = self.curr_count + 1
-        #if self.curr_count > self.save_per_acts:
-        #    self.curr_count = self.curr_count - self.save_per_acts
-        #    self.saver.save(self.session, 'cnn_policy',  global_step=self.total_count)
+
+        '''x = np.reshape(ob, (128, 128))
+        fig = plt.figure()
+        fig.add_subplot(1, 2, 1)
+        plt.imshow(x, cmap='Greys')
+        fig.add_subplot(1, 2, 2)
+        plt.imshow(x/255, cmap='Greys')
+        plt.show()'''
+
+        '''if self.curr_count > self.save_per_acts:
+            self.saver = tf.train.Saver()
+            self.curr_count = self.curr_count - self.save_per_acts
+            self.saver.save(self.session, '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/cnn_policy',  
+                            global_step=self.total_count)'''
+
         return ac1[0], vpred1[0]
 
     def get_variables(self):
