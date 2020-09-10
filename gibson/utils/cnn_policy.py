@@ -58,7 +58,6 @@ class CnnPolicy(object):
             for j in range(2):
                 x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), [2, 2], pad="SAME"))
             #x = tf.nn.batch_normalization(x)
-            #x = tf.nn.batch_normalization(x)
             x = tf.nn.relu(tf.math.add(x,input_data))
 
         x = tf.nn.relu(U.conv2d(x, 32, "out", [2, 2], pad="VALID"))

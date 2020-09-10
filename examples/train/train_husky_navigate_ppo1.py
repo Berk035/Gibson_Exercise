@@ -50,15 +50,15 @@ def train(seed):
     num_timesteps = step*episode*iteration
     tpa = step*episode
 
-    if args.mode == "SENSOR":
+    if args.mode == "SENSOR": #Blind Mode
         def policy_fn(name, ob_space, ac_space):
             return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=128, num_hid_layers=4,
                                         elm_mode=elm_policy)
-    elif args.mode == "FUSE":
+    elif args.mode == "FUSE": #Fusing sensor space with image space
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
                                           save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess, elm_mode=elm_policy)
-    else:
+    else: #Using only image space
         def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
 
@@ -74,7 +74,7 @@ def train(seed):
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
-                          clip_param=0.2, entcoeff=0.05,
+                          clip_param=0.2, entcoeff=0.03,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -115,6 +115,8 @@ def main():
     toc = time.time()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
+    f = open("time_elapsed.txt","w+"); f.write("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
+    f.close()
 
 if __name__ == '__main__':
     import argparse

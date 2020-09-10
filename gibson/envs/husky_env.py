@@ -109,7 +109,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         rewards = [
             # WARNING:all rewards have rew/frame units and close to 1.0
-            alive,  # It has 1 or 0 values
+            #alive,  # It has 1 or 0 values
             progress,  # It calculates between two frame for target distance (-0.6,0.6)
             obstacle_penalty,  # It changes between (0,-0.350) penalty values.
             angle_cost,  # It has -0.6~0 values for tend to target
@@ -124,9 +124,9 @@ class HuskyNavigateEnv(CameraRobotEnv):
             #print("------------------------")
             # print("Episode Frame: {}".format(self.nframe))
             # print("Target Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x_tar,y_tar,z_tar))
-            # print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
-            # print(self.robot.geo_dist_target([2,1],[1,1]))
-            # print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            #print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
+            print(self.robot.geo_dist_target([2,1],[1,1]))
+            #print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
             # print("Velocity: x={:.3f}, y={:.3f}, z={:.3f}".format(vx, vy, vz))
             # print("Progress: {:.3f}".format(progress))
             # print("Steering cost: {:.3f}" .format(steering_cost))
@@ -138,7 +138,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
             # print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
             # print("Close to target: {:.2f}".format(close_to_target))
             # print("ACTUAL:%.2f\t"%self.actual_path + str("SHORTEST:%.2f"%self.shortest_path))
-            print("Rewards: {:.3f} " .format(sum(rewards)))
+            # print("Rewards: {:.3f} " .format(sum(rewards)))
             # print("Total Eps Rewards: {:.3f} ".format(self.eps_reward))
             # print("-----------------------")
 
@@ -607,13 +607,15 @@ def get_obstacle_penalty(robot, depth):
 
     obstacle_penalty = 0
     OBSTACLE_LIMIT = 1.5
+    #OBSTACLE_LIMIT = 0.8
     if obstacle_dist < OBSTACLE_LIMIT:
         obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
+        #2*(obstacle_dist - OBSTACLE_LIMIT)
 
-    debugmode = 0
+    debugmode = 1
     if debugmode:
         #print("Obstacle screen", screen_sz, screen_delta)
-        #print("Obstacle distance: {:.3f}".format(obstacle_dist))
+        print("Obstacle distance: {:.3f}".format(obstacle_dist))
         print("Obstacle penalty: {:.3f}".format(obstacle_penalty))
 
     return obstacle_penalty

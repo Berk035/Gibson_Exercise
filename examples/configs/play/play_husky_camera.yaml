@@ -1,15 +1,15 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
-model_id: Euharlee
+model_id: Aloha
 target_orn: [0, 0, 0]
-target_pos: [0.5,0,0.3]
-initial_orn: [0, 0, 3.097]
-initial_pos: [0.5,-6,0.3]
+target_pos: [-3.657, 4.236, 0.116]
+initial_orn: [0, 0, -3.097]
+initial_pos: [0.661,10.160,0.135]
 
 #Robot Specifications--------------------
 robot_scale: 0.5
 power: 2.5
-control: velocity
+control: torque
 
 #Train Parameters------------------------
 n_step: 600
@@ -30,12 +30,12 @@ show_diagnostics: true
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose : false
+  random_initial_pose : true
   random_target_pose : false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
   random_init_z_range: [-0.0, 0.0]
-  random_init_rot_range: [-0.1, 0.1]
+  random_init_rot_range: [-0.57, 0.57]
 
 output: [nonviz_sensor, depth]
 resolution: 128
@@ -49,5 +49,5 @@ verbose: true
 fast_lq_render: true
 
 #For observe
-enjoy: true
+enjoy: false
 enable_ui_recording: false

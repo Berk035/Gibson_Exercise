@@ -183,16 +183,16 @@ class BaseRobot:
         z_range = self.config["random"]["random_init_z_range"]
         r_range = self.config["random"]["random_init_rot_range"]
 
-        if not (self.env.eps_count-1) % self.config['n_batch']:
-            if self.config["enjoy"]:
-                self.iter_so_far = 150
-            scale_fac=5
-            self.iter_so_far+=1
-            self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
-            self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
-            self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
-            #print("X_range:{}, Y_range:{}".format(x_range,y_range))
-
+        if self.config["curriculum"]:
+            if not (self.env.eps_count-1) % self.config['n_batch']:
+                if self.config["enjoy"]:
+                    self.iter_so_far = 150
+                scale_fac=5
+                self.iter_so_far+=1
+                self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
+                self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
+                self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
+                #print("X_range:{}, Y_range:{}".format(x_range,y_range))
 
         new_pos = [ pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
                     pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),

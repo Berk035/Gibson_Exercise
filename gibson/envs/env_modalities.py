@@ -425,7 +425,6 @@ class CameraRobotEnv(BaseRobotEnv):
                screen_half - screen_delta: screen_half + screen_delta, -1]
 
         cv2.putText(img, 'ObsDist:{:.3f}'.format(np.mean(sensor)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
-        #cv2.putText(img, 'ObsPen:{:.3f}'.format(np.mean(sensor)), (10, 110), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
         #cv2.putText(img, 'x:{0:.2f} y:{1:.2f} z:{2:.2f}'.format(x,y,z), (10, 100), font, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
         # cv2.putText(img, 'ro:{0:.4f} pth:{1:.4f} ya:{2:.4f}'.format(r,p,ya), (10, 40), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
         # cv2.putText(img, 'potential:{0:.4f}'.format(self.potential), (10, 60), font, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
