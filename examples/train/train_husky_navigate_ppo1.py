@@ -24,6 +24,15 @@ import datetime
 
 #Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
 #Shows computation device ----> sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
+def callback(lcl, glb):
+    # stop training if reward exceeds 199
+    #total = sum(lcl['rewbuffer'][-101:-1]) / 100
+    total = lcl['tot']
+    totalt = lcl['t']
+    is_solved = totalt > 2000 and total >= 50
+    return is_solved
+
 def train(seed):
     rank = MPI.COMM_WORLD.Get_rank()
     sess = utils.make_gpu_session(args.num_gpu)
@@ -74,7 +83,7 @@ def train(seed):
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
-                          clip_param=0.2, entcoeff=0.03,
+                          clip_param=0.2, entcoeff=0.05,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -89,7 +98,7 @@ def train(seed):
         pposgd_simple.learn(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,
-                            clip_param=0.2, entcoeff=0.03,
+                            clip_param=0.2, entcoeff=0.05,
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',
@@ -102,26 +111,21 @@ def train(seed):
 
     env.close()
 
-def callback(lcl, glb):
-    # stop training if reward exceeds 199
-    total = sum(lcl['episode_rewards'][-101:-1]) / 100
-    totalt = lcl['t']
-    is_solved = totalt > 2000 and total >= -50
-    return is_solved
-
 def main():
     tic = time.time()
     train(seed=5)
     toc = time.time()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
-    f = open("time_elapsed.txt","w+"); f.write("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
+    pathtxt =  "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/time_elapsed.txt"
+    f = open(pathtxt,"w+"); f.write("Date: {}".format(datetime.date.today()))
+    f.write("Process Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour,min,sec))
     f.close()
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="DEPTH")
+    parser.add_argument('--mode', type=str, default="FUSE")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)

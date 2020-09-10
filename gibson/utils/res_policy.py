@@ -25,21 +25,20 @@ class CnnPolicy(object):
         sequence_length = None
 
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
-        x = ob / 255.0
-        if kind == 'small':  # from A3C paper
-            x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
-            x = U.flattenallbut0(x)
-            x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
 
-        elif kind == 'large':  # Nature DQN
-            x = tf.nn.relu(U.conv2d(x, 32, "l1", [8, 8], [4, 4], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 64, "l2", [4, 4], [2, 2], pad="VALID"))
-            x = tf.nn.relu(U.conv2d(x, 64, "l3", [3, 3], [1, 1], pad="VALID"))
-            x = U.flattenallbut0(x)
-            x = tf.nn.relu(tf.layers.dense(x, 512, name='lin', kernel_initializer=U.normc_initializer(1.0)))
-        else:
-            raise NotImplementedError
+        x = ob / 255.0
+        x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
+        x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
+
+        num_res_net_blocks = 5
+        for i in range(num_res_net_blocks):
+            input_data = x
+            for j in range(2):
+                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), [2, 2], pad="SAME"))
+            x = tf.nn.relu(tf.math.add(x,input_data))
+
+        x = U.flattenallbut0(x)
+        x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
 
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
@@ -51,6 +50,7 @@ class CnnPolicy(object):
         stochastic = tf.placeholder(dtype=tf.bool, shape=())
         ac = self.pd.sample() # XXX
         self._act = U.function([stochastic, ob], [ac, self.vpred])
+
 
     def act(self, stochastic, ob):
         ac1, vpred1 =  self._act(stochastic, ob[None])

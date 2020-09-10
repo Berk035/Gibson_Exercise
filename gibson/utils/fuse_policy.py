@@ -59,7 +59,7 @@ class FusePolicy(object):
                                                   kernel_initializer=U.normc_initializer(1.0)))
             y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
         else:
-            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i"%(1),
+            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc1",
                                                   kernel_initializer=U.normc_initializer(1.0), trainable=False))
             y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
 

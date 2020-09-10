@@ -58,6 +58,7 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
     new = True # marks if we're on first timestep of an episode
     ob_all = env.reset()
     ob_sensor = ob_all['nonviz_sensor']
+    #WARNING: If your output consists RGB data you should change the line below.
 #    if not sensor:
         #ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
     ob = ob_all['depth']
@@ -97,7 +98,6 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
             ep_rets = []
             ep_lens = []
         i = t % horizon
-
 
         if sensor:
             obs[i] = ob_sensor
