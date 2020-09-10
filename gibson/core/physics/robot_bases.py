@@ -29,14 +29,21 @@ def quatToXYZW(orn, seq='xyzw'):
     inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
     return orn[inds]
 
-def load_waypoint(curriculum=None):
+def load_waypoint(curriculum=None, model=None):
     """Loading 100 different waypoints from path plan file
     """
+    path = None; path_sort = None
+
+    if model == 'Euharlee': path = '/waypoints/euharlee_waypoints.csv'
+    elif model == 'Aloha': path = '/waypoints/aloha_waypoints.csv'
+
+    if model == 'Euharlee': path_sort = '/waypoints/euharlee_waypoints_clipped_sort.csv'
+    elif model == 'Aloha': path_sort = '/waypoints/aloha_waypoints_clipped_sort.csv'
+
     if curriculum:
-        #df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_sort.csv')
-        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints_clipped_sort.csv')
+        df = ps.read_csv(currentdir + path_sort)
     else:
-        df = ps.read_csv(currentdir + '/waypoints/euharlee_waypoints.csv')
+        df = ps.read_csv(currentdir + path)
 
     z_offset = 0.3
     points = df.values
@@ -65,8 +72,9 @@ class BaseRobot:
         self.initial_pos = None
         self.initial_orn = None
 
+        model = self.config["model_id"]
         if self.config["waypoint_active"]:
-            self.way_pos, self.way_target, self.way_orn = load_waypoint(self.config["curriculum"])
+            self.way_pos, self.way_target, self.way_orn = load_waypoint(self.config["curriculum"],model)
 
         self.robot_ids = None
         self.model_file = model_file

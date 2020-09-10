@@ -45,6 +45,7 @@ def mesh(model_id="", episode=0, waypoint=False):
 	if waypoint:
 		#df = pandas.read_csv('euharlee_waypoints_sort.csv')
 		df = pandas.read_csv('euharlee_waypoints_clipped_sort.csv')
+		#df = pandas.read_csv('aloha_waypoints_clipped_sort.csv')
 		points = df.values
 		length = len(points)
 		sp = np.zeros((length, 3)); ang = np.zeros((length, 1)); gp = np.zeros((length, 3))
@@ -197,6 +198,7 @@ def main():
 	plot_spl()
 
 	for x in range(args.map):
+		#mesh(model_id="Aloha", episode=args.eps, waypoint=False)
 		mesh(model_id="Euharlee", episode=args.eps, waypoint=True)
 		read_file(ep_n=args.eps)
 		args.eps += 1
@@ -205,8 +207,9 @@ def main():
 if __name__ == '__main__':
 	import argparse
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=14001) # Number of episode
+	parser.add_argument('--eps', type=int, default=2000) # Number of episode
 	parser.add_argument('--map', type=int, default=2) # Number of shown map
+	#parser.add_argument('--model', type=int, default="")  # Map ID
 	args = parser.parse_args()
 	#mesh(model_id="Euharlee")
 	main()

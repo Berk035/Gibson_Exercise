@@ -50,16 +50,16 @@ def train(seed):
     num_timesteps = step * episode * iteration
     tpa = step * episode
 
-    if args.mode == "SENSOR":
+    if args.mode == "SENSOR": #Blind Mode
         def policy_fn(name, ob_space, ac_space):
             return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=128, num_hid_layers=4,
                                         elm_mode=elm_policy)
-    elif args.mode == "FUSE":
+    elif args.mode == "FUSE": #Fusing sensor space with image space
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
                                           save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess,
                                           elm_mode=elm_policy)
-    else:
+    else: #Using only image space
         def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
 
@@ -69,7 +69,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-08-21_600_50_91_80.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-09-14_600_50_91_50.model'
     #args.reload_name = '/home/berk/PycharmProjects/Original_Gibs/gibson/utils/models/flagrun_RGBD2_150.model'
 
     print(args.reload_name)
@@ -78,7 +78,7 @@ def train(seed):
         pposgd_fuse.enjoy(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
-                          clip_param=0.2, entcoeff=0.05,
+                          clip_param=0.2, entcoeff=0.03,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -88,10 +88,8 @@ def train(seed):
                           reload_name=args.reload_name
                           )
     else:
-        if args.mode == "SENSOR":
-            sensor = True
-        else:
-            sensor = False
+        if args.mode == "SENSOR": sensor = True
+        else: sensor = False
         pposgd_simple.enjoy(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,

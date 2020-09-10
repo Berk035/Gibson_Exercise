@@ -337,7 +337,8 @@ class CameraRobotEnv(BaseRobotEnv):
         self._require_camera_input = 'rgb_filled' in self.config["output"] or \
                                      'rgb_prefilled' in self.config["output"] or \
                                      'depth' in self.config["output"] or \
-                                     'normal' in self.config["output"] or \
+                                     'normal' in self.config["output"]\
+                                     or \
                                      'semantics' in self.config["output"]
         self._require_rgb = 'rgb_filled' in self.config["output"] or "rgb_prefilled" in self.config["output"]
         self._require_depth = 'depth' in self.config["output"]

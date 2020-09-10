@@ -90,7 +90,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         close_to_target = 0
         # x_tar, y_tar, z_tar = self.robot.target_pos
         if self.robot.dist_to_target() <= THRESHOLD:
-            close_to_target = 0.5
+            close_to_target = 0.25
 
         steering_cost = self.robot.steering_cost(a)
         angle_cost = self.robot.angle_cost()
@@ -109,11 +109,11 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         rewards = [
             # WARNING:all rewards have rew/frame units and close to 1.0
-            #alive,  # It has 1 or 0 values
+            alive,  # It has 1 or 0 values
             progress,  # It calculates between two frame for target distance (-0.6,0.6)
-            obstacle_penalty,  # It changes between (0,-0.350) penalty values.
+            #obstacle_penalty,  # It changes between (0,-0.350) penalty values.
             angle_cost,  # It has -0.6~0 values for tend to target
-            wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
+            #wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
             steering_cost,  # It has -0.1 values when the agent turns
             close_to_target,  # It returns reward step by step between 0.25~0.75
             # feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
@@ -121,11 +121,11 @@ class HuskyNavigateEnv(CameraRobotEnv):
         ]
 
         if (debugmode):
-            #print("------------------------")
+            print("------------------------")
             # print("Episode Frame: {}".format(self.nframe))
             # print("Target Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x_tar,y_tar,z_tar))
             #print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
-            print(self.robot.geo_dist_target([2,1],[1,1]))
+            #print(self.robot.geo_dist_target([2,1],[1,1]))
             #print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
             # print("Velocity: x={:.3f}, y={:.3f}, z={:.3f}".format(vx, vy, vz))
             # print("Progress: {:.3f}".format(progress))
@@ -596,7 +596,7 @@ class HuskySemanticNavigateEnv(SemanticRobotEnv):
 
 def get_obstacle_penalty(robot, depth):
     screen_sz = robot.obs_dim[0]
-    screen_delta = int(screen_sz / 4)
+    screen_delta = int(screen_sz / 8) #4 idi bu
     screen_half = int(screen_sz / 2)
     height_offset = int(screen_sz / 4)
 
@@ -612,7 +612,7 @@ def get_obstacle_penalty(robot, depth):
         obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
         #2*(obstacle_dist - OBSTACLE_LIMIT)
 
-    debugmode = 1
+    debugmode = 0
     if debugmode:
         #print("Obstacle screen", screen_sz, screen_delta)
         print("Obstacle distance: {:.3f}".format(obstacle_dist))
