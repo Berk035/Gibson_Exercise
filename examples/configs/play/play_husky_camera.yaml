@@ -1,6 +1,6 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
-model_id: Aloha
+model_id: Euharlee
 target_orn: [0, 0, 0]
 target_pos: [-3.657, 4.236, 0.116]
 initial_orn: [0, 0, -3.097]
@@ -12,13 +12,13 @@ power: 2.5
 control: torque
 
 #Train Parameters------------------------
-n_step: 600
+n_step: 500
 n_episode: 50
 n_iter: 91 #(100 Iteration)
 
 #Learning Method
-waypoint_active: false
-curriculum: false
+waypoint_active: true
+curriculum: true
 elm_active: false
 
 #Screen & UI Parameters------------------
@@ -30,7 +30,7 @@ show_diagnostics: true
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
 random:
-  random_initial_pose : true
+  random_initial_pose : false
   random_target_pose : false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]

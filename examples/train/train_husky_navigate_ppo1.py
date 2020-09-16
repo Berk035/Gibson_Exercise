@@ -63,7 +63,7 @@ def train(seed):
         def policy_fn(name, ob_space, ac_space):
             return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=128, num_hid_layers=4,
                                         elm_mode=elm_policy)
-    elif args.mode == "FUSE": #Fusing sensor space with image space
+    elif args.mode == "DEPTH" or args.mode == "RGB": #Fusing sensor space with image space
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
                                           save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess, elm_mode=elm_policy)
@@ -79,11 +79,11 @@ def train(seed):
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-08-06_500_50_91_60.model'
     print(args.reload_name)
 
-    if args.mode == "FUSE":
+    if args.mode == "DEPTH" or args.mode == "RGB":
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
-                          clip_param=0.2, entcoeff=0.05,
+                          clip_param=0.2, entcoeff=0.03,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -98,7 +98,7 @@ def train(seed):
         pposgd_simple.learn(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,
-                            clip_param=0.2, entcoeff=0.05,
+                            clip_param=0.2, entcoeff=0.03,
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',
@@ -112,14 +112,15 @@ def train(seed):
     env.close()
 
 def main():
-    tic = time.time()
+    tic = time.time(); start = time.ctime()
     train(seed=5)
-    toc = time.time()
+    toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
-    pathtxt =  "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/time_elapsed.txt"
-    f = open(pathtxt,"w+"); f.write("Date: {}".format(datetime.date.today()))
-    f.write("Process Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour,min,sec))
+    pathtxt = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/time_elapsed.txt"
+    f = open(pathtxt, "w+"); f.write("Date: {}".format(datetime.date.today()))
+    f.write("Start-Finish: {} *** {}".format(start,finish))
+    f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
     f.close()
 
 if __name__ == '__main__':

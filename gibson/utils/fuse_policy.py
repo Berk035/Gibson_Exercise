@@ -29,10 +29,6 @@ class FusePolicy(object):
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
         ob_sensor = U.get_placeholder(name="ob_sensor", dtype=tf.float32, shape=[sequence_length] + list(sensor_space.shape))
 
-        ## Obfilter on sensor output
-        with tf.variable_scope("obfilter"):
-            self.ob_rms = RunningMeanStd(shape=sensor_space.shape)
-
         x = ob / 255.0
         if kind == 'small':  # from A3C paper
             x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
@@ -47,6 +43,10 @@ class FusePolicy(object):
             x = tf.nn.relu(tf.layers.dense(x, 64, name='lin', kernel_initializer=U.normc_initializer(1.0)))
         else:
             raise NotImplementedError
+
+        ## Obfilter on sensor output
+        with tf.variable_scope("obfilter"):
+            self.ob_rms = RunningMeanStd(shape=sensor_space.shape)
 
         obz_sensor = tf.clip_by_value((ob_sensor - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
         #x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
