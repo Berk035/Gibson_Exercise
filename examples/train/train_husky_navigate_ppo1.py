@@ -10,6 +10,7 @@ from mpi4py import MPI
 from gibson.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple, pposgd_fuse
+from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
 from gibson.utils import cnn_policy, mlp_policy, fuse_policy
 from gibson.utils import utils
@@ -21,6 +22,7 @@ import random
 import sys
 import time
 import datetime
+import examples.plot_result
 
 #Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
 #Shows computation device ----> sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -111,15 +113,23 @@ def train(seed):
 
     env.close()
 
+def callback(lcl, glb):
+    # stop training if reward exceeds 199
+    total = sum(lcl['episode_rewards'][-101:-1]) / 100
+    totalt = lcl['t']
+    is_solved = totalt > 2000 and total >= -50
+    return is_solved
+
 def main():
     tic = time.time(); start = time.ctime()
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
+    mesh_2D_v2.main(raw_args=args)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
-    pathtxt = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/time_elapsed.txt"
-    f = open(pathtxt, "w+"); f.write("Date: {}".format(datetime.date.today()))
-    f.write("Start-Finish: {} *** {}".format(start,finish))
+    pathtxt = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt"
+    f = open(pathtxt, "w+"); f.write("Date: {}\n".format(datetime.date.today()))
+    f.write("Start-Finish: {} *** {}\n".format(start,finish))
     f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
     f.close()
 
@@ -134,5 +144,9 @@ if __name__ == '__main__':
     parser.add_argument('--resolution', type=str, default="SMALL")
     parser.add_argument('--reload_name', type=str, default=None)
     parser.add_argument('--save_name', type=str, default=None)
+    #---------Show Result------------
+    parser.add_argument('--eps', type=int, default=4500)  # Number of episode
+    parser.add_argument('--map', type=int, default=3)  # Number of shown map
+    parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
     args = parser.parse_args()
     main()

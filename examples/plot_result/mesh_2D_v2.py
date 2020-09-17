@@ -1,10 +1,15 @@
+import argparse
 import matplotlib.pyplot as plt
 import meshcut
 import numpy as np
 import pandas
 import seaborn as sns
 import pandas as pd
+import sys, os
 #from scipy.stats import norm
+
+SAVE_PATH = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/'
+WAY_PATH = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/core/physics/waypoints/'
 
 def load_obj(fn):
 	verts = []
@@ -44,7 +49,7 @@ def mesh(model_id="", episode=0, waypoint=False):
 
 	if waypoint:
 		#df = pandas.read_csv('euharlee_waypoints_sort.csv')
-		df = pandas.read_csv('euharlee_waypoints_clipped_sort.csv')
+		df = pandas.read_csv(WAY_PATH + str('euharlee_waypoints_clipped_sort.csv'))
 		#df = pandas.read_csv('aloha_waypoints_clipped_sort.csv')
 		points = df.values
 		length = len(points)
@@ -131,7 +136,8 @@ def read_file(ep_n=0):
 	plt.tight_layout()'''
 
 	ep_pos.close()
-	plt.show()
+	#plt.show()
+	plt.savefig(os.path.join(SAVE_PATH + 'ep_%i.png' % ep_n))
 
 	# the histogram of the data
 	#mu = 0; sigma=1
@@ -168,7 +174,8 @@ def plot_csv():
 	plt.fill_between(data["Iteration"], d4 - np.std(d4), d4 + np.std(d4), color='orange', alpha=0.2)
 	fig.tight_layout()
 
-	plt.show()
+	#plt.show()
+	plt.savefig(os.path.join(SAVE_PATH + 'rew_values.png'))
 
 def plot_spl():
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
@@ -189,27 +196,18 @@ def plot_spl():
 	sns.distplot(d2, ax=axes[1], color='red', label="SPL for each eps.")
 	plt.legend()
 	fig.tight_layout()
-	plt.show()
+	#plt.show()
+	plt.savefig(os.path.join(SAVE_PATH + 'success_rate.png'))
 
-
-def main():
+def main(raw_args=None):
 	"This function shows that analysis of training process"
 	plot_csv() #Reward Plotting
-	plot_spl()
+	plot_spl() #Success Rate Plotting
 
-	for x in range(args.map):
-		#mesh(model_id="Aloha", episode=args.eps, waypoint=False)
-		mesh(model_id="Euharlee", episode=args.eps, waypoint=True)
-		read_file(ep_n=args.eps)
-		args.eps += 1
-
+	for x in range(raw_args.map):
+		mesh(model_id=raw_args.model, episode=raw_args.eps, waypoint=True)
+		read_file(ep_n=raw_args.eps)
+		raw_args.eps += 1
 
 if __name__ == '__main__':
-	import argparse
-	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--eps', type=int, default=1401) # Number of episode
-	parser.add_argument('--map', type=int, default=3) # Number of shown map
-	#parser.add_argument('--model', type=int, default="")  # Map ID
-	args = parser.parse_args()
-	#mesh(model_id="Euharlee")
 	main()
