@@ -145,7 +145,7 @@ def read_file(ep_n=0):
 	#y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (bins - mu))**2))
 	#plt.plot(bins, y, '--')
 
-def plot_csv():
+def plot_csv(debug=False):
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
 	C1 = '\033[94m'
 	C1END = '\033[0m'
@@ -174,10 +174,12 @@ def plot_csv():
 	plt.fill_between(data["Iteration"], d4 - np.std(d4), d4 + np.std(d4), color='orange', alpha=0.2)
 	fig.tight_layout()
 
-	#plt.show()
 	plt.savefig(os.path.join(SAVE_PATH + 'rew_values.png'))
+	if debug:
+		plt.show()
 
-def plot_spl():
+
+def plot_spl(debug=False):
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
 	C1 = '\033[94m'
 	C1END = '\033[0m'
@@ -196,13 +198,17 @@ def plot_spl():
 	sns.distplot(d2, ax=axes[1], color='red', label="SPL for each eps.")
 	plt.legend()
 	fig.tight_layout()
-	#plt.show()
+
 	plt.savefig(os.path.join(SAVE_PATH + 'success_rate.png'))
+	if debug:
+		plt.show()
 
 def main(raw_args=None):
 	"This function shows that analysis of training process"
-	plot_csv() #Reward Plotting
-	plot_spl() #Success Rate Plotting
+	deb = bool(1)
+
+	plot_csv(debug=deb) #Reward Plotting
+	plot_spl(debug=deb) #Success Rate Plotting
 
 	for x in range(raw_args.map):
 		mesh(model_id=raw_args.model, episode=raw_args.eps, waypoint=True)

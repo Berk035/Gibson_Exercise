@@ -109,10 +109,10 @@ class HuskyNavigateEnv(CameraRobotEnv):
             alive,  # It has 1 or 0 values
             progress,  # It calculates between two frame for target distance (Generally +-0.1, max -4,-2)
             obstacle_penalty,  # It changes between (0,-1.350) penalty values.
-            angle_cost,  # It has -0.6~0 values for tend to target
+            2*angle_cost,  # It has -0.6~0 values for tend to target
             wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
             steering_cost,  # It has -0.1 values when the agent turns
-            close_to_target,  # It returns reward step by step between 0.25~0.75
+            close_to_target,  # It returns reward when agent reached the target
             # feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
             # joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
@@ -605,7 +605,7 @@ def get_obstacle_penalty(robot, depth):
     obstacle_penalty = 0
     OBSTACLE_LIMIT = 0.5
     if obstacle_dist < OBSTACLE_LIMIT:
-        obstacle_penalty = (obstacle_dist - 3*OBSTACLE_LIMIT)
+        obstacle_penalty = (obstacle_dist - 2*OBSTACLE_LIMIT)
 
     debugmode = 0
     if debugmode:
