@@ -101,7 +101,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         roll, pitch, yaw = self.robot.get_rpy()
         # (vx,vy,vz) = self.robot.get_velocity()
         height = self.position[2]
-        alive = float(self.robot.alive_bonus(height, pitch))-1
+        alive = float(self.robot.alive_bonus(height, pitch))
 
         #WARNING:all rewards have rew/frame units and close to 1.0
         rewards = [
@@ -109,7 +109,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
             alive,  # It has 1 or 0 values
             progress,  # It calculates between two frame for target distance (Generally +-0.1, max -4,-2)
             obstacle_penalty,  # It changes between (0,-1.350) penalty values.
-            2*angle_cost,  # It has -0.6~0 values for tend to target
+            angle_cost,  # It has -0.6~0 values for tend to target
             wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
             steering_cost,  # It has -0.1 values when the agent turns
             close_to_target,  # It returns reward when agent reached the target
@@ -123,7 +123,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
             # print("Target Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x_tar,y_tar,z_tar))
             # print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(self.position[0],self.position[1],self.position[2]))
             # print(self.robot.geo_dist_target([2,1],[1,1]))
-            # print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
+            print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))
             # print("Velocity: x={:.3f}, y={:.3f}, z={:.3f}".format(vx, vy, vz))
             # print("Progress: {:.3f}".format(progress))
             # print("Steering cost: {:.3f}" .format(steering_cost))
@@ -603,9 +603,10 @@ def get_obstacle_penalty(robot, depth):
                 screen_half - screen_delta: screen_half + screen_delta, -1]))
 
     obstacle_penalty = 0
-    OBSTACLE_LIMIT = 0.5
+    OBSTACLE_LIMIT = 1.5
     if obstacle_dist < OBSTACLE_LIMIT:
-        obstacle_penalty = (obstacle_dist - 2*OBSTACLE_LIMIT)
+        obstacle_penalty = (obstacle_dist - OBSTACLE_LIMIT)
+        #obstacle_penalty = (obstacle_dist - 2 * OBSTACLE_LIMIT)
 
     debugmode = 0
     if debugmode:

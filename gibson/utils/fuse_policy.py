@@ -9,7 +9,6 @@ import sys
 
 class FusePolicy(object):
     recurrent = False
-
     def __init__(self, name, ob_space, sensor_space, ac_space, session, hid_size, num_hid_layers, save_per_acts=None, kind='large', elm_mode=False):
         self.total_count = 0
         self.curr_count = 0
