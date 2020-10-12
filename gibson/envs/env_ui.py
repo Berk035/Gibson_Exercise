@@ -115,7 +115,7 @@ class SimpleUI():
 
         debug = 0
         if debug:
-            path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/user_int"
+            path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/user_int")
             try:
                 os.mkdir(path)
             except OSError:

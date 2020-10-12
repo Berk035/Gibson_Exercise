@@ -35,11 +35,11 @@ class ResPolicy(object):
         x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
         x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
 
-        num_res_net_blocks = 3
+        num_res_net_blocks = 5
         for i in range(num_res_net_blocks):
             input_data = x
             for j in range(2):
-                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), [1, 1], pad="SAME"))
+                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), filter_size=[3, 3], pad="SAME"))
             x = tf.nn.relu(tf.math.add(x,input_data))
 
         x = U.flattenallbut0(x)

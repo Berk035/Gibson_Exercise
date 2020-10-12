@@ -8,8 +8,8 @@ import pandas as pd
 import sys, os
 #from scipy.stats import norm
 
-SAVE_PATH = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/'
-WAY_PATH = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/core/physics/waypoints/'
+SAVE_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/')
+WAY_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/core/physics/waypoints/')
 
 def load_obj(fn):
 	verts = []
@@ -32,7 +32,8 @@ def mesh(model_id="", episode=0, waypoint=False):
 	print(C1 + "PLOTTING EPISODE:" + C1END)
 	plt.style.use('default') # switches back to matplotlib style
 
-	fn = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/" + str(model_id) + "/mesh_z_up.obj"
+	fn = os.path.join(os.path.expanduser("~"),
+					  "PycharmProjects/Gibson_Exercise/gibson/assets/dataset/") + str(model_id) + "/mesh_z_up.obj"
 	verts, faces = load_obj(fn)
 	z = np.min(verts[:, -1]) + 0.5  # your robot height
 	cross_section = meshcut.cross_section(verts, faces, plane_orig=(0, 0, z), plane_normal=(0, 0, 1))
@@ -71,15 +72,13 @@ def mesh(model_id="", episode=0, waypoint=False):
 		plt.show()
 
 def read_file(ep_n=0):
-
+	file = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions")
 	count = 0
-	for line in open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
-					 "_" + str(ep_n) + ".txt").readlines(): count += 1
+	for line in open(file +	 "_" + str(ep_n) + ".txt").readlines(): count += 1
 
 	timesteps = count
 	fn = np.arange(timesteps)
-	ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
-				  "_" + str(ep_n) + ".txt", "r")
+	ep_pos = open(file +  "_" + str(ep_n) + ".txt", "r")
 
 	x_pos = np.zeros(timesteps)
 	y_pos = np.zeros(timesteps)
@@ -151,7 +150,7 @@ def plot_csv(debug=False):
 	C1END = '\033[0m'
 	print(C1 + "PLOTTING ITERATION:" + C1END)
 
-	data = pd.read_csv("/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv")
+	data = pd.read_csv(os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv"))
 	#print(data.head())
 	sns.set(style="darkgrid", context="paper")
 	fig, axes = plt.subplots(figsize=(8,8),nrows=2, ncols=2)
@@ -185,7 +184,7 @@ def plot_spl(debug=False):
 	C1END = '\033[0m'
 	print(C1 + "PLOTTING SUCCESS:" + C1END)
 
-	data = pd.read_csv("/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv")
+	data = pd.read_csv(os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv"))
 	sns.set(style="darkgrid", context="paper")
 	fig, axes = plt.subplots(figsize=(8,4),nrows=1, ncols=2)
 	plt.subplots_adjust(wspace=1, hspace=1)
@@ -205,7 +204,7 @@ def plot_spl(debug=False):
 
 def main(raw_args=None):
 	"This function shows that analysis of training process"
-	deb = bool(0)
+	deb = bool(1)
 
 	plot_csv(debug=deb) #Reward Plotting
 	plot_spl(debug=deb) #Success Rate Plotting

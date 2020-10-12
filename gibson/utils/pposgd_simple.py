@@ -106,7 +106,7 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
 
         record_depth=0
         if record_depth:
-            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration"
+            path_1 = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration")
             try:
                 os.mkdir(path_1)
             except OSError:
@@ -312,14 +312,14 @@ def learn(env, policy_func, *,
         #Iteration Recording
         record = 1
         if record:
-            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
+            file_path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations")
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
 
             if iters_so_far == 1:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'w', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps','Reward','LossEnt','LossVF','PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -329,7 +329,7 @@ def learn(env, policy_func, *,
                                      'Reward':np.mean(rews),'LossEnt':meanlosses[4],
                                      'LossVF':meanlosses[2],'PolSur':meanlosses[1]})
             else:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'a', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps', 'Reward', 'LossEnt', 'LossVF', 'PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

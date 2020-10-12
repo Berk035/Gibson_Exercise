@@ -231,17 +231,17 @@ class BaseRobotEnv(BaseEnv):
         #Episode Recording
         record = 1
         if record:
-            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes"
+            file_path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes")
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
 
             if self.nframe == 1:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+                ep_pos = open(os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions") +
                               "_" + str(self.eps_count) + ".txt", "w")
             else:
-                ep_pos = open(r"/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions" +
+                ep_pos = open(os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/episodes/positions") +
                               "_" + str(self.eps_count) + ".txt", "a")
 
             ep_pos.write("%i;%i;%.3f;%.3f;%.3f" % (self.nframe, a, body_xyz[0], body_xyz[1], sum(self.rewards)) + "\n")
@@ -486,7 +486,7 @@ class CameraRobotEnv(BaseRobotEnv):
 
             record=0
             if record:
-                path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_episode"
+                path_1 = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_episode")
                 try:
                     os.mkdir(path_1)
                 except OSError:

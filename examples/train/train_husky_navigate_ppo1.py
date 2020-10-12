@@ -126,7 +126,8 @@ def main():
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     mesh_2D_v2.main(raw_args=args)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
-    pathtxt = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt"
+    pathtxt = os.path.join(os.path.expanduser("~"),
+                           "PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt")
     f = open(pathtxt, "w+"); f.write("Date: {}\n".format(datetime.date.today()))
     f.write("Start-Finish: {} *** {}\n".format(start,finish))
     f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
@@ -135,7 +136,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="RESNET")
+    parser.add_argument('--mode', type=str, default="DEPTH")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)

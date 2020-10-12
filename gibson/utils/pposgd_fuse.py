@@ -57,8 +57,10 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     new = True # marks if we're on first timestep of an episode
     ob_all = env.reset()
     ob_sensor = ob_all['nonviz_sensor']
-    #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
-    ob = ob_all['depth']
+    if 'rgb_filled' in ob_all:
+        ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+    else:
+        ob = ob_all['depth']
     cur_ep_ret = 0  # return in current episode
     cur_ep_len = 0  # len of current episode
     ep_rets = []  # returns of completed episodes in this segment
@@ -96,7 +98,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
 
         record_depth=0
         if record_depth:
-            path_1 = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration"
+            path_1 = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration")
             try:
                 os.mkdir(path_1)
             except OSError:
@@ -113,9 +115,10 @@ def traj_segment_generator(pi, env, horizon, stochastic):
 
         # with Profiler("environment step"):
         ob_all, rew, new, meta = env.step(ac)
-        ob_sensor = ob_all['nonviz_sensor']
-        #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
-        ob = ob_all['depth']
+        if 'rgb_filled' in ob_all:
+            ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+        else:
+            ob = ob_all['depth']
         rews[i] = rew
 
         cur_ep_ret += rew
@@ -127,8 +130,10 @@ def traj_segment_generator(pi, env, horizon, stochastic):
             cur_ep_len = 0
             ob_all = env.reset()
             ob_sensor = ob_all['nonviz_sensor']
-            #ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
-            ob = ob_all['depth']
+            if 'rgb_filled' in ob_all:
+                ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+            else:
+                ob = ob_all['depth']
         t += 1
 
 
@@ -301,14 +306,14 @@ def learn(env, policy_func, *,
         #Iteration Recording
         record = 1
         if record:
-            file_path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations"
+            file_path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations")
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
 
             if iters_so_far == 1:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'w', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps','Reward','LossEnt','LossVF','PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -318,7 +323,7 @@ def learn(env, policy_func, *,
                                      'Reward':np.mean(rews),'LossEnt':meanlosses[4],
                                      'LossVF':meanlosses[2],'PolSur':meanlosses[1]})
             else:
-                with open('/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv',
+                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'a', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps', 'Reward', 'LossEnt', 'LossVF', 'PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
