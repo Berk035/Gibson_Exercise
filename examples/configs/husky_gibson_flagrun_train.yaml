@@ -1,12 +1,21 @@
+#Environment Specifications--------------
 envname: HuskyGibsonFlagRunEnv
-model_id: space7
-target_orn: [0, 0, 1.57]
-target_pos: [-14.3, 45.07, 0.5]
-initial_orn: [0, 0, 4.71]
-initial_pos: [-14.3, 5, 1.2]
+model_id: Howie
+target_orn: [0, 0, 0]
+target_pos: [-3.883, 0.993, 0.25]
+initial_orn: [0, 0, 0]
+initial_pos: [-7.864, 1.251, 0.25]
+waypoint_active: false
+
+#Train Parameters------------------------
+n_step: 500
+n_batch: 20
+n_iter: 105
+elm_active: true
+
+#Screen & UI Parameters------------------
 fov: 1.57
 is_discrete: true
-
 use_filler: true
 display_ui: true
 show_diagnostics: false
@@ -17,15 +26,20 @@ random:
   random_target_pose : false
   random_init_x_range: [-0.1, 0.1]
   random_init_y_range: [-0.1, 0.1]
-  random_init_z_range: [-0.1, 0.1]
+  random_init_z_range: [-0.0, 0.0]
   random_init_rot_range: [-0.1, 0.1]
 
-output: [nonviz_sensor, rgb_filled, depth]
+output: [nonviz_sensor, depth]
 resolution: 128
-
 speed:
-  timestep: 0.001
-  frameskip: 100
+  timestep: 0.01
+  frameskip: 3
 
-mode: gui #gui|headless
+#Mode Parameters-------------------------
+mode: headless #gui|headless #web_ui
 verbose: false
+fast_lq_render: true
+
+#For Observe Results---------------------
+enjoy: false
+enable_ui_recording: false

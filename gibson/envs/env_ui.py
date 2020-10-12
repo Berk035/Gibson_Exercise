@@ -15,6 +15,7 @@ import sys
 import zmq
 import pickle
 import scipy
+import imageio
 
 
 class View(Enum):
@@ -64,10 +65,11 @@ class SimpleUI():
         assert(tag in self.components), "Invalid view tag " + view
         self.nframe += 1
         if self.save_first and self.nframe <= len(self.POS):
-            import scipy.misc
             img = np.zeros((view.shape[0], view.shape[1], 3))
             img[:, :, :] = view
-            scipy.misc.imsave("Img%d.png" % self.nframe, img)
+
+            #imageio.imwrite("Img%d.png" % self.nframe, img)
+
         for index, component in enumerate(self.components):
             if tag == component:
                 self._add_image(
@@ -85,7 +87,7 @@ class SimpleUI():
         self.refresh()
 
     def refresh(self):
-        if "enable_ui_recording" in self.env.config:
+        if self.env.config["enable_ui_recording"]:
             screen_to_dump = cv2.cvtColor(self.screen_arr.transpose(1, 0, 2), cv2.COLOR_BGR2RGB)
             cv2.imshow("Recording", screen_to_dump)
             cmd=cv2.waitKey(5)%256
@@ -111,6 +113,15 @@ class SimpleUI():
 
         self.socket.send(b"ui" + screen)
 
+        debug = 0
+        if debug:
+            path = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/user_int"
+            try:
+                os.mkdir(path)
+            except OSError:
+                pass
+
+            cv2.imwrite(os.path.join(path, 'Frame_UI_%i.jpg') % (self.nframe), screen_to_dump)
 
         #surf = pygame.surfarray.make_surface(self.screen_arr)
         #self.screen.blit(surf, (0, 0))

@@ -1,5 +1,6 @@
 #add parent dir to find package. Only needed for source code build, pip install doesn't need it.
-import os, inspect
+import os
+import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0,parentdir)
@@ -8,28 +9,42 @@ import gym, logging
 from mpi4py import MPI
 from gibson.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
-from gibson.utils import pposgd_simple
+from gibson.utils import pposgd_simple, pposgd_fuse
+from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
-from gibson.utils import cnn_policy, mlp_policy
+from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy
 from gibson.utils import utils
-import datetime
 from baselines import logger
 from gibson.utils.monitor import Monitor
 import os.path as osp
 import tensorflow as tf
 import random
 import sys
+import time
+import datetime
+import examples.plot_result
 
-## Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
+#Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
+#Shows computation device ----> sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-def train(num_timesteps, seed):
+def callback(lcl, glb):
+    # stop training if reward exceeds 199
+    #total = sum(lcl['rewbuffer'][-101:-1]) / 100
+    total = lcl['tot']
+    totalt = lcl['t']
+    is_solved = totalt > 2000 and total >= 50
+    return is_solved
+
+def train(seed):
     rank = MPI.COMM_WORLD.Get_rank()
-    #sess = U.single_threaded_session()
+    args.num_gpu=2
+    #sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     sess = utils.make_gpu_session(args.num_gpu)
     sess.__enter__()
+
     if args.meta != "":
         saver = tf.train.import_meta_graph(args.meta)
-        saver.restore(sess,tf.train.latest_checkpoint('./'))
+        saver.restore(sess, tf.train.latest_checkpoint('./'))
 
     if rank == 0:
         logger.configure()
@@ -37,70 +52,88 @@ def train(num_timesteps, seed):
         logger.configure(format_strs=[])
     workerseed = seed + 10000 * MPI.COMM_WORLD.Get_rank()
     set_global_seeds(workerseed)
-
     use_filler = not args.disable_filler
 
-    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'husky_navigate_rgb_train.yaml')
-    if args.mode=="SENSOR":
-        config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'husky_navigate_nonviz_train.yaml')
+    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'configs', 'config_husky.yaml')
     print(config_file)
 
-    raw_env = HuskyNavigateEnv(gpu_idx=args.gpu_idx,
-                               config=config_file)
+    #args.gpu_idx = 3
+    raw_env = HuskyNavigateEnv(gpu_idx=args.gpu_idx, config=config_file)
+    step = raw_env.config['n_step']; episode = raw_env.config['n_episode']; iteration = raw_env.config['n_iter']
+    elm_policy = raw_env.config['elm_active']
+    num_timesteps = step*episode*iteration
+    tpa = step*episode
 
-    def policy_fn(name, ob_space, ac_space):
-        if args.mode == "SENSOR":
-            return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=64, num_hid_layers=2)
-        else:
+    if args.mode == "SENSOR": #Blind Mode
+        def policy_fn(name, ob_space, ac_space):
+            return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=128, num_hid_layers=4,
+                                        elm_mode=elm_policy)
+    elif args.mode == "DEPTH" or args.mode == "RGB": #Fusing sensor space with image space
+        def policy_fn(name, ob_space, sensor_space, ac_space):
+            return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
+                                          save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess, elm_mode=elm_policy)
+
+    elif args.mode == "RESNET":
+        def policy_fn(name, ob_space, sensor_space, ac_space):
+            return resnet_policy.ResPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
+                                          save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess, elm_mode=elm_policy)
+
+    else: #Using only image space
+        def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
-        #else:
-            #return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space, save_per_acts=10000, session=sess)
-
 
     env = Monitor(raw_env, logger.get_dir() and
-        osp.join(logger.get_dir(), str(rank)))
+                  osp.join(logger.get_dir(), str(rank)))
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    
-    pposgd_simple.learn(env, policy_fn,
-        max_timesteps=int(num_timesteps * 1.1),
-        timesteps_per_actorbatch=3000,
-        clip_param=0.2, entcoeff=0.0,
-        optim_epochs=4, optim_stepsize=3e-3, optim_batchsize=64,
-        gamma=0.996, lam=0.95,
-        schedule='linear',
-        save_name="husky_navigate_ppo_{}".format(args.mode),
-        save_per_acts=10,
-        sensor=args.mode=="SENSOR",
-        reload_name=args.reload_name
-    )
-    '''
-    pposgd_fuse.learn(env, policy_fn,
-        max_timesteps=int(num_timesteps * 1.1),
-        timesteps_per_actorbatch=1024,
-        clip_param=0.2, entcoeff=0.0001,
-        optim_epochs=10, optim_stepsize=3e-6, optim_batchsize=64,
-        gamma=0.995, lam=0.95,
-        schedule='linear',
-        save_name=args.save_name,
-        save_per_acts=10000,
-        reload_name=args.reload_name
-    )
+    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-09-20_500_50_73_80.model'
+    print(args.reload_name)
+
+    if args.mode == "DEPTH" or args.mode == "RGB" or args.mode == "RESNET" :
+        pposgd_fuse.learn(env, policy_fn,
+                          max_timesteps=int(num_timesteps * 1.1),
+                          timesteps_per_actorbatch=tpa,
+                          clip_param=0.2, entcoeff=0.03,
+                          optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
+                          gamma=0.99, lam=0.95,
+                          schedule='linear',
+                          save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
+                                                                iteration),
+                          save_per_acts=10,
+                          reload_name=args.reload_name
+                          )
+    else:
+        if args.mode == "SENSOR": sensor = True
+        else: sensor = False
+        pposgd_simple.learn(env, policy_fn,
+                            max_timesteps=int(num_timesteps * 1.1),
+                            timesteps_per_actorbatch=tpa,
+                            clip_param=0.2, entcoeff=0.03,
+                            optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
+                            gamma=0.996, lam=0.95,
+                            schedule='linear',
+                            save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
+                                                                  iteration),
+                            save_per_acts=10,
+                            sensor=sensor,
+                            reload_name=args.reload_name
+                            )
 
     env.close()
-    '''
-
-def callback(lcl, glb):
-    # stop training if reward exceeds 199
-    total = sum(lcl['episode_rewards'][-101:-1]) / 100
-    totalt = lcl['t']
-    is_solved = totalt > 2000 and total >= -50
-    return is_solved
-
 
 def main():
-    train(num_timesteps=10000000, seed=5)
+    tic = time.time(); start = time.ctime()
+    train(seed=5)
+    toc = time.time(); finish = time.ctime()
+    sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
+    mesh_2D_v2.main(raw_args=args)
+    print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
+    pathtxt = "/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt"
+    f = open(pathtxt, "w+"); f.write("Date: {}\n".format(datetime.date.today()))
+    f.write("Start-Finish: {} *** {}\n".format(start,finish))
+    f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
+    f.close()
 
 if __name__ == '__main__':
     import argparse
@@ -113,5 +146,9 @@ if __name__ == '__main__':
     parser.add_argument('--resolution', type=str, default="SMALL")
     parser.add_argument('--reload_name', type=str, default=None)
     parser.add_argument('--save_name', type=str, default=None)
+    #---------Show Result------------
+    parser.add_argument('--eps', type=int, default=4000)  # Number of episode
+    parser.add_argument('--map', type=int, default=3)  # Number of shown map
+    parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
     args = parser.parse_args()
     main()

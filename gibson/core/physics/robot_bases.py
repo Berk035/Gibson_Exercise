@@ -1,5 +1,4 @@
 ## Author: pybullet, Zhiyang He
-
 import pybullet as p
 import gym, gym.spaces, gym.utils
 import numpy as np
@@ -11,6 +10,7 @@ import pybullet_data
 from gibson import assets
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
+import pandas as ps
 
 
 def quatFromXYZW(xyzw, seq='xyzw'):
@@ -29,6 +29,33 @@ def quatToXYZW(orn, seq='xyzw'):
     inds = [seq.index('x'), seq.index('y'), seq.index('z'), seq.index('w')]
     return orn[inds]
 
+def load_waypoint(curriculum=None, model=None):
+    """Loading 100 different waypoints from path plan file
+    """
+    path = None; path_sort = None
+
+    if model == 'Euharlee': path = '/waypoints/euharlee_waypoints.csv'
+    elif model == 'Aloha': path = '/waypoints/aloha_waypoints.csv'
+
+    if model == 'Euharlee': path_sort = '/waypoints/euharlee_waypoints_clipped_sort.csv'
+    elif model == 'Aloha': path_sort = '/waypoints/aloha_waypoints_clipped_sort.csv'
+
+    if curriculum:
+        df = ps.read_csv(currentdir + path_sort)
+    else:
+        df = ps.read_csv(currentdir + path)
+
+    z_offset = 0.3
+    points = df.values
+    length = len(points)
+    sp = np.zeros((length, 3));  ang = np.zeros((length, 1));  gp = np.zeros((length, 3))
+    complexity = np.zeros((length,1))
+    for r in range(length):
+        sp[r] = np.array([points[r][2], points[r][3], points[r][4] + z_offset])
+        ang[r] = np.array([points[r][5]])
+        gp[r] = np.array([points[r][6], points[r][7], points[r][8] + z_offset])
+        complexity[r] = np.array([points[r][10] / points[r][9]])
+    return sp, gp, ang
 
 class BaseRobot:
     """
@@ -36,10 +63,18 @@ class BaseRobot:
     Handles object loading
     """
     def __init__(self, model_file, robot_name, scale = 1, env = None):
+        #self.model_type = None
         self.parts = None
         self.jdict = None
         self.ordered_joints = None
         self.robot_body = None
+
+        self.initial_pos = None
+        self.initial_orn = None
+
+        model = self.config["model_id"]
+        if self.config["waypoint_active"]:
+            self.way_pos, self.way_target, self.way_orn = load_waypoint(self.config["curriculum"],model)
 
         self.robot_ids = None
         self.model_file = model_file
@@ -48,8 +83,8 @@ class BaseRobot:
         self.scale = scale
         self._load_model()
         self.eyes = self.parts["eyes"]
-        
         self.env = env
+        self.iter_so_far = 0
 
     def addToScene(self, bodies):
         if self.parts is not None:
@@ -78,7 +113,7 @@ class BaseRobot:
 
             for j in range(p.getNumJoints(bodies[i])):
                 p.setJointMotorControl2(bodies[i],j,p.POSITION_CONTROL,positionGain=0.1,velocityGain=0.1,force=0)
-                ## TODO (hzyjerry): the following is diabled due to pybullet update
+                ## the following is diabled due to pybullet update
                 #_,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name = p.getJointInfo(bodies[i], j)
                 _,joint_name,joint_type, _,_,_, _,_,_,_, _,_, part_name, _,_,_,_ = p.getJointInfo(bodies[i], j)
 
@@ -119,15 +154,24 @@ class BaseRobot:
             self.robot_ids = (p.loadURDF(os.path.join(self.physics_model_dir, self.model_file), globalScaling = self.scale), )
         self.parts, self.jdict, self.ordered_joints, self.robot_body = self.addToScene(self.robot_ids)
 
+
     def reset(self):
         if self.robot_ids is None:
             self._load_model()
-        
-        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.config["initial_orn"]), 'wxyz'))
-        self.robot_body.reset_position(self.config["initial_pos"])
+
+        if self.config["waypoint_active"]:
+            self.initial_pos = self.way_pos[self.env.eps_count%len(self.way_pos)-1]
+            self.initial_orn = [0,0,float(self.way_orn[self.env.eps_count%len(self.way_pos)-1])]
+            self.target_pos = self.way_target[self.env.eps_count%len(self.way_pos)-1]
+        else:
+            self.target_orn, self.target_pos    = self.config["target_orn"], self.config["target_pos"]
+            self.initial_orn, self.initial_pos  = self.config["initial_orn"], self.config["initial_pos"]
+
+        self.robot_body.reset_orientation(quatToXYZW(euler2quat(*self.initial_orn), 'wxyz'))
+        self.robot_body.reset_position(self.initial_pos)
         self.reset_random_pos()
         self.robot_specific_reset()
-        
+
         state = self.calc_state()
         return state
 
@@ -140,27 +184,72 @@ class BaseRobot:
         pos = self.robot_body.get_position()
         orn = self.robot_body.get_orientation()
 
+        in_x = [-0.1, 0.1]; in_y = [-0.1, 0.1]; in_r = [-0.1, 0.1]
 
         x_range = self.config["random"]["random_init_x_range"]
         y_range = self.config["random"]["random_init_y_range"]
         z_range = self.config["random"]["random_init_z_range"]
         r_range = self.config["random"]["random_init_rot_range"]
 
+        if self.config["curriculum"]:
+            if not (self.env.eps_count-1) % self.config['n_batch']:
+                if self.config["enjoy"]:
+                    self.iter_so_far = 150
+                scale_fac=5
+                self.iter_so_far+=1
+                self.config["random"]["random_init_x_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_x]
+                self.config["random"]["random_init_y_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_y]
+                self.config["random"]["random_init_rot_range"] = [k * float(self.iter_so_far/scale_fac) for k in in_r]
+                #print("X_range:{}, Y_range:{}".format(x_range,y_range))
+
         new_pos = [ pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
                     pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
                     pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
-        new_orn = quaternions.qmult(quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+
+        #print("X_range:{}, Y_range:{}, new_Pose:{}".format(x_range, y_range, new_pos))
+        #print("Iteration:", self.iter_so_far)
+        #print("r_range:{}".format(r_range))
+
+        new_orn = quaternions.qmult(
+            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
 
         self.robot_body.reset_orientation(new_orn)
         self.robot_body.reset_position(new_pos)
-
 
     def reset_new_pose(self, pos, orn):
         self.robot_body.reset_orientation(orn)
         self.robot_body.reset_position(pos)        
 
+    def reset_random_target(self):
+        '''
+        Reposition target randomness
+        '''
+        if not self.config["random"]["random_target_pose"]:
+            return
+
+        pos = self.config["target_pos"]
+        orn = self.config["target_orn"]
+
+        x_range = self.config["random"]["random_init_x_range"]
+        y_range = self.config["random"]["random_init_y_range"]
+        z_range = self.config["random"]["random_init_z_range"]
+        r_range = self.config["random"]["random_init_rot_range"]
+
+        new_pos = [pos[0] + self.np_random.uniform(low=x_range[0], high=x_range[1]),
+                   pos[1] + self.np_random.uniform(low=y_range[0], high=y_range[1]),
+                   pos[2] + self.np_random.uniform(low=z_range[0], high=z_range[1])]
+        new_orn = quaternions.qmult(
+            quaternions.axangle2quat([1, 0, 0], self.np_random.uniform(low=r_range[0], high=r_range[1])), orn)
+
+        self.config["target_pos"] = new_pos
+        self.config["target_orn"] = new_orn
+
     def calc_potential(self):
         return 0
+
+    def robot_specific_reset(self):
+        pass
+
 
 class Pose_Helper:
     def __init__(self, body_part):
@@ -329,9 +418,11 @@ class Joint:
         if self.jointType == p.JOINT_PRISMATIC:
             velocity = np.array(velocity) / self.scale
         p.setJointMotorControl2(self.bodies[self.bodyIndex],self.jointIndex,p.VELOCITY_CONTROL, targetVelocity=velocity) # , positionGain=0.1, velocityGain=0.1)
+        #print("Velocity = %.2f" %velocity)
 
     def set_torque(self, torque):
-        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex, controlMode=p.TORQUE_CONTROL, force=torque) #, positionGain=0.1, velocityGain=0.1)
+        p.setJointMotorControl2(bodyIndex=self.bodies[self.bodyIndex], jointIndex=self.jointIndex,
+                                controlMode=p.TORQUE_CONTROL, force=torque)  # , positionGain=0.1, velocityGain=0.1)
 
     def reset_state(self, pos, vel):
         self.set_state(pos, vel)

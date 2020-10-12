@@ -2,7 +2,10 @@ import baselines.common.tf_util as U
 import tensorflow as tf
 import gym
 from baselines.common.distributions import make_pdtype
-from gibson.core.render.profiler import Profiler
+#from gibson.core.render.profiler import Profiler
+import cv2,os
+import numpy as np
+import matplotlib.pyplot as plt
 
 class CnnPolicy(object):
     recurrent = False
@@ -22,15 +25,14 @@ class CnnPolicy(object):
         sequence_length = None
 
         ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
-        print("CNNPolicy registering")
-
         x = ob / 255.0
-        if kind == 'small': # from A3C paper
+        if kind == 'small':  # from A3C paper
             x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
             x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
             x = U.flattenallbut0(x)
-            x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer = U.normc_initializer(1.0)))
-        elif kind == 'large': # Nature DQN
+            x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+
+        elif kind == 'large':  # Nature DQN
             x = tf.nn.relu(U.conv2d(x, 32, "l1", [8, 8], [4, 4], pad="VALID"))
             x = tf.nn.relu(U.conv2d(x, 64, "l2", [4, 4], [2, 2], pad="VALID"))
             x = tf.nn.relu(U.conv2d(x, 64, "l3", [3, 3], [1, 1], pad="VALID"))
@@ -38,10 +40,6 @@ class CnnPolicy(object):
             x = tf.nn.relu(tf.layers.dense(x, 512, name='lin', kernel_initializer=U.normc_initializer(1.0)))
         else:
             raise NotImplementedError
-
-        ## Saver
-        #self.saver = tf.train.Saver()
-
 
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits", kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
@@ -54,18 +52,18 @@ class CnnPolicy(object):
         ac = self.pd.sample() # XXX
         self._act = U.function([stochastic, ob], [ac, self.vpred])
 
-
     def act(self, stochastic, ob):
         ac1, vpred1 =  self._act(stochastic, ob[None])
         self.total_count = self.total_count + 1
         self.curr_count = self.curr_count + 1
-        #if self.curr_count > self.save_per_acts:
-        #    self.curr_count = self.curr_count - self.save_per_acts
-        #    self.saver.save(self.session, 'cnn_policy',  global_step=self.total_count)
+
         return ac1[0], vpred1[0]
+
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
+
     def get_trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+
     def get_initial_state(self):
         return []

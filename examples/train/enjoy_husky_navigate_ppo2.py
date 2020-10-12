@@ -55,7 +55,10 @@ def enjoy(num_timesteps, seed):
     policy_fn = MlpPolicy if args.mode == "SENSOR" else CnnPolicy2
     print(args.mode, (args.mode == "SENSOR"))
 
-    ppo2.enjoy(policy=policy_fn, env=env, nsteps=600, nminibatches=4,
+    args.reload_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'gibson', 'utils',
+                                    'models', '00190')
+
+    ppo2.enjoy(policy=policy_fn, env=env, nsteps=100, nminibatches=4,
         lam=0.95, gamma=0.996, noptepochs=4, log_interval=1,
         ent_coef=.01,
         lr=lambda f : f * 2.5e-4,
@@ -63,22 +66,9 @@ def enjoy(num_timesteps, seed):
         total_timesteps=int(num_timesteps * 1.1),
         save_interval=5,
         reload_name=args.reload_name, sensor = (args.mode == "SENSOR"))
-    
-    '''
-    pposgd_fuse.learn(env, policy_fn,
-        max_timesteps=int(num_timesteps * 1.1),
-        timesteps_per_actorbatch=1024,
-        clip_param=0.2, entcoeff=0.0001,
-        optim_epochs=10, optim_stepsize=3e-6, optim_batchsize=64,
-        gamma=0.995, lam=0.95,
-        schedule='linear',
-        save_name=args.save_name,
-        save_per_acts=10000,
-        reload_name=args.reload_name
-    )
 
     env.close()
-    '''
+
 
 def callback(lcl, glb):
     # stop training if reward exceeds 199
@@ -89,7 +79,7 @@ def callback(lcl, glb):
 
 
 def main():
-    enjoy(num_timesteps=10000000, seed=5)
+    enjoy(num_timesteps=10000, seed=5)
 
 if __name__ == '__main__':
     import argparse

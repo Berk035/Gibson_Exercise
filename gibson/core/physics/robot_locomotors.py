@@ -10,7 +10,6 @@ import sys
 
 OBSERVATION_EPS = 0.01
 
-
 class WalkerBase(BaseRobot):
     """ Built on top of BaseRobot
     Handles action_dim, sensor_dim, scene
@@ -28,11 +27,11 @@ class WalkerBase(BaseRobot):
         scale,
         sensor_dim=None,
         resolution=512,
-        control = 'torque',
+        control = 'velocity',
         env = None
     ):
         BaseRobot.__init__(self, filename, robot_name, scale, env)
-        self.control = control
+        self.control = self.env.config["control"] if "control" in self.env.config.keys() else control
         self.resolution = resolution
         self.obs_dim = None
         self.obs_dim = [self.resolution, self.resolution, 0]
@@ -51,6 +50,7 @@ class WalkerBase(BaseRobot):
         self.observation_space = gym.spaces.Box(-obs_high, obs_high)
         sensor_high = np.inf * np.ones([sensor_dim])
         self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high)
+        #self.sensor_space = gym.spaces.Box(-sensor_high, sensor_high, shape=(22,))
 
         self.power = power
         self.camera_x = 0
@@ -88,11 +88,11 @@ class WalkerBase(BaseRobot):
         new_pos = np.array(delta) + self.get_position()
         self.robot_body.reset_position(new_pos)
 
-    def move_forward(self, forward=0.05):
+    def move_forward(self, forward=0.03):
         x, y, z, w = self.robot_body.get_orientation()
         self.move_by(quat2mat([w, x, y, z]).dot(np.array([forward, 0, 0])))
         
-    def move_backward(self, backward=0.05):
+    def move_backward(self, backward=0.03):
         x, y, z, w = self.robot_body.get_orientation()
         self.move_by(quat2mat([w, x, y, z]).dot(np.array([-backward, 0, 0])))
 
@@ -108,6 +108,9 @@ class WalkerBase(BaseRobot):
         
     def get_rpy(self):
         return self.robot_body.bp_pose.rpy()
+
+    def get_velocity(self):
+        return self.robot_body.speed()
 
     def apply_action(self, a):
         #print(self.ordered_joints)
@@ -138,6 +141,21 @@ class WalkerBase(BaseRobot):
     def set_target_position(self, pos):
         self.target_pos = pos
 
+    def dist_to_target(self):
+        return np.linalg.norm(np.array(self.body_xyz) - np.array(self.get_target_position()))
+
+    def geo_dist_target(self, xy1, xy2):
+        '''Please check new iGibson study for geodesic distance:
+        https://github.com/StanfordVL/iGibson/blob/master/examples/demo/scene_example.py
+        Also, for apply edges can be used. '''
+        self.trav_map_resolution = 0.1
+        self.trav_map_size = 2
+        #axis = 0 if len(xy.shape) == 1 else 1
+        world1 = np.flip((xy1 - self.trav_map_size / 2.0) * self.trav_map_resolution, axis=1)
+        world2 = np.flip((xy2 - self.trav_map_size / 2.0) * self.trav_map_resolution, axis=1)
+        dist = np.linalg.norm(world1-world2, axis=1)
+        return (40.96,28.84)
+
     def calc_state(self):
         j = np.array([j.get_joint_relative_state() for j in self.ordered_joints], dtype=np.float32).flatten()
         self.joint_speeds = j[1::2]
@@ -152,20 +170,29 @@ class WalkerBase(BaseRobot):
         if self.initial_z == None:
             self.initial_z = z
         r, p, yaw = self.body_rpy
-        robot_orn = self.get_rpy()
+        robot_orn = self.get_orientation()
 
         self.walk_target_theta = np.arctan2(self.target_pos[1] - self.body_xyz[1],
                                             self.target_pos[0] - self.body_xyz[0])
-        self.walk_target_dist = np.linalg.norm(
-            [self.target_pos[1] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0]])
-        self.walk_target_dist_xyz = np.linalg.norm(
-            [self.target_pos[2] - self.body_xyz[2], self.target_pos[0] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0]])
-        
+
+        self.walk_target_dist = np.linalg.norm([self.target_pos[1] - self.body_xyz[1],
+                                                self.target_pos[0] - self.body_xyz[0]])
+
+        self.walk_target_dist_xyz = np.linalg.norm([self.target_pos[2] - self.body_xyz[2],
+                                                    self.target_pos[1] - self.body_xyz[1],
+                                                    self.target_pos[0] - self.body_xyz[0]])
+
         self.angle_to_target = self.walk_target_theta - yaw
+
         if self.angle_to_target > np.pi:
             self.angle_to_target -= 2 * np.pi
         elif self.angle_to_target < -np.pi:
             self.angle_to_target += 2 * np.pi
+
+        debug=0
+        if debug:
+            print("Walk Target Theta: {:.3g}, Yaw: {:.3g}".format(self.walk_target_theta, yaw))
+            print("Angle Target: {:.3g}".format(self.angle_to_target))
 
         self.walk_height_diff = np.abs(self.target_pos[2] - self.body_xyz[2])
 
@@ -186,20 +213,35 @@ class WalkerBase(BaseRobot):
 
         debugmode=0
         if debugmode:
-            print("Robot state", self.target_pos[1] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0])
+            print("Robot state y:%.3f x:%.3f" % (self.target_pos[1] - self.body_xyz[1], self.target_pos[0] - self.body_xyz[0]))
 
-        more = np.array([ z-self.initial_z,
-            np.sin(self.angle_to_target), np.cos(self.angle_to_target),
+        more = np.array([ z-self.initial_z, np.sin(self.angle_to_target), np.cos(self.angle_to_target),
             0.3* vx , 0.3* vy , 0.3* vz ,  # 0.3 is just scaling typical speed into -1..+1, no physical sense here
             r, p], dtype=np.float32)
 
+        #more = np.array([np.sin(self.angle_to_target), np.cos(self.angle_to_target),
+        #                 0.3 * vx, 0.3 * vy, 0.3 * vz,
+        #                 # 0.3 is just scaling typical speed into -1..+1, no physical sense here
+        #                 r, p], dtype=np.float32)
+
+        debugmode=0
         if debugmode:
             print("Robot more", more)
-
 
         if not 'nonviz_sensor' in self.env.config["output"]:
             j.fill(0)
             more.fill(0)
+
+        d = self.dist_to_target()
+
+        '''if self.env.config["waypoint_active"]:
+            if (d <= 0.2):  # Pass next waypoint
+                self.point += 1
+                # self.point = np.clip(self.point, 0, 4) #Aloha_way_custom için geçerli
+                self.point = np.clip(self.point, 0, 1)
+                self.set_target_position(self.way_target[self.point])
+                print("Reached Waypoint %i" % self.point)
+        '''
 
         return np.clip( np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)
 
@@ -215,9 +257,6 @@ class WalkerBase(BaseRobot):
 
     def calc_goalless_potential(self):
         return self.dist_to_start / self.scene.dt
-
-    def dist_to_target(self):
-        return np.linalg.norm(np.array(self.body_xyz) - np.array(self.get_target_position()))
 
 
     def angle_cost(self):
@@ -246,262 +285,45 @@ class WalkerBase(BaseRobot):
         return self.robot_body.get_position() / self.mjcf_scaling
 
 
-
-class Ant(WalkerBase):
-    foot_list = ['front_left_foot', 'front_right_foot', 'left_back_foot', 'right_back_foot']
-    model_type = "MJCF"
-    default_scale = 0.25
-
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        self.mjcf_scaling = scale
-        WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8, 
-                            sensor_dim=28, power=2.5, scale=scale, 
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
-        self.r_f = 0.1
-        if config["is_discrete"]:
-            self.action_space = gym.spaces.Discrete(17)
-            self.torque = 10
-            ## Hip_1, Ankle_1, Hip_2, Ankle_2, Hip_3, Ankle_3, Hip_4, Ankle_4 
-            self.action_list = [[self.r_f * self.torque, 0, 0, 0, 0, 0, 0, 0],
-                                [0, self.r_f * self.torque, 0, 0, 0, 0, 0, 0],
-                                [0, 0, self.r_f * self.torque, 0, 0, 0, 0, 0],
-                                [0, 0, 0, self.r_f * self.torque, 0, 0, 0, 0],
-                                [0, 0, 0, 0, self.r_f * self.torque, 0, 0, 0],
-                                [0, 0, 0, 0, 0, self.r_f * self.torque, 0, 0],
-                                [0, 0, 0, 0, 0, 0, self.r_f * self.torque, 0],
-                                [0, 0, 0, 0, 0, 0, 0, self.r_f * self.torque],
-                                [-self.r_f * self.torque, 0, 0, 0, 0, 0, 0, 0],
-                                [0, -self.r_f * self.torque, 0, 0, 0, 0, 0, 0],
-                                [0, 0, -self.r_f * self.torque, 0, 0, 0, 0, 0],
-                                [0, 0, 0, -self.r_f * self.torque, 0, 0, 0, 0],
-                                [0, 0, 0, 0, -self.r_f * self.torque, 0, 0, 0],
-                                [0, 0, 0, 0, 0, -self.r_f * self.torque, 0, 0],
-                                [0, 0, 0, 0, 0, 0, -self.r_f * self.torque, 0],
-                                [0, 0, 0, 0, 0, 0, 0, -self.r_f * self.torque],
-                                [0, 0, 0, 0, 0, 0, 0, 0]]
-            '''
-            [[self.r_f * self.torque, 0, 0, -self.r_f * self.torque, 0, 0, 0, 0], 
-                                [0, 0, self.r_f * self.torque, self.r_f * self.torque, 0, 0, 0, 0], 
-                                [0, 0, 0, 0, self.r_f * self.torque, self.r_f * self.torque, 0, 0], 
-                                [0, 0, 0, 0, 0, 0, self.r_f * self.torque, self.r_f * self.torque], 
-                                [0, 0, 0, 0, 0, 0, 0, 0]]
-            '''
-            self.setup_keys_to_action()
-
-    def apply_action(self, action):
-        if self.config["is_discrete"]:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-        WalkerBase.apply_action(self, realaction)
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('1'), ): 0,
-            (ord('2'), ): 1, 
-            (ord('3'), ): 2, 
-            (ord('4'), ): 3, 
-            (ord('5'), ): 4, 
-            (ord('6'), ): 5, 
-            (ord('7'), ): 6, 
-            (ord('8'), ): 7, 
-            (ord('9'), ): 8, 
-            (ord('0'), ): 9, 
-            (ord('q'), ): 10, 
-            (ord('w'), ): 11, 
-            (ord('e'), ): 12, 
-            (ord('r'), ): 13, 
-            (ord('t'), ): 14, 
-            (ord('y'), ): 15, 
-            (): 4
-        }
-
-
-class AntClimber(Ant):
-    def __init__(self, config, env=None):
-        Ant.__init__(self, config, env=env)
-        
-    def robot_specific_reset(self):
-        Ant.robot_specific_reset(self)
-        amplify = 1
-        for j in self.jdict.keys():
-            self.jdict[j].power_coef *= amplify
-        '''
-        self.jdict["ankle_1"].power_coef = amplify * self.jdict["ankle_1"].power_coef
-        self.jdict["ankle_2"].power_coef = amplify * self.jdict["ankle_2"].power_coef
-        self.jdict["ankle_3"].power_coef = amplify * self.jdict["ankle_3"].power_coef
-        self.jdict["ankle_4"].power_coef = amplify * self.jdict["ankle_4"].power_coef
-        '''
-        debugmode=0
-        if debugmode:
-            for k in self.jdict.keys():
-                print("Power coef", self.jdict[k].power_coef)
-
-    def calc_potential(self):
-        #base_potential = Ant.calc_potential(self)
-        #height_coeff   = 3
-        #height_potential = - height_coeff * self.walk_height_diff / self.scene.dt
-        debugmode = 0
-        if debugmode:
-            print("Ant xyz potential", self.walk_target_dist_xyz)
-        return - self.walk_target_dist_xyz / self.scene.dt
-        
-    def alive_bonus(self, roll, pitch):
-        """Alive requires the ant's head to not touch the ground, it's roll
-        and pitch cannot be too large"""
-        #return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-        alive = roll < np.pi/2 and roll > -np.pi/2 and pitch > -np.pi/2 and pitch < np.pi/2
-        debugmode = 0
-        if debugmode:
-            print("roll, pitch")
-            print(roll, pitch)
-            print("alive")
-            print(alive)
-        return +1 if alive else -1
-
-    def _is_close_to_goal(self):
-        body_pose = self.robot_body.pose()
-        parts_xyz = np.array([p.pose().xyz() for p in self.parts.values()]).flatten()
-        self.body_xyz = (parts_xyz[0::3].mean(), parts_xyz[1::3].mean(), body_pose.xyz()[2])  # torso z is more informative than mean z
-        dist_to_goal = np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1], self.body_xyz[2] - self.target_pos[2]])
-        debugmode = 0
-        if debugmode:
-            print(np.linalg.norm([self.body_xyz[0] - self.target_pos[0], self.body_xyz[1] - self.target_pos[1], self.body_xyz[2] - self.target_pos[2]]), [self.body_xyz[0], self.body_xyz[1], self.body_xyz[2]], [self.target_pos[0], self.target_pos[1], self.target_pos[2]])
-        return dist_to_goal < 0.5
-
-
-class Humanoid(WalkerBase):
-    self_collision = True
-    foot_list = ["right_foot", "left_foot"]  # "left_hand", "right_hand"
-    model_type = "MJCF"
-    default_scale = 0.6
-    glass_offset = 0.3
-
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        self.mjcf_scaling = scale
-        WalkerBase.__init__(self, "humanoid.xml", "torso", action_dim=17, 
-                            sensor_dim=44, power=0.41, scale=scale, 
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
-        self.glass_id = None
-        self.is_discrete = config["is_discrete"]
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.torque = 0.1
-            self.action_list = np.concatenate((np.ones((1, 17)), np.zeros((1, 17)))).tolist()
-
-            self.setup_keys_to_action()
-
-    def robot_specific_reset(self):
-        humanoidId = -1
-        numBodies = p.getNumBodies()
-        for i in range (numBodies):
-            bodyInfo = p.getBodyInfo(i)
-            if bodyInfo[1].decode("ascii") == 'humanoid':
-                humanoidId = i
-        ## Spherical radiance/glass shield to protect the robot's camera
-        
-        WalkerBase.robot_specific_reset(self)
-
-
-        if self.glass_id is None:
-            glass_path = os.path.join(self.physics_model_dir, "glass.xml")
-            glass_id = p.loadMJCF(glass_path)[0]
-            self.glass_id = glass_id
-            p.changeVisualShape(self.glass_id, -1, rgbaColor=[0, 0, 0, 0])
-            p.createMultiBody(baseVisualShapeIndex=glass_id, baseCollisionShapeIndex=-1)
-            cid = p.createConstraint(humanoidId, -1, self.glass_id,-1,p.JOINT_FIXED, 
-                jointAxis=[0,0,0], parentFramePosition=[0, 0, self.glass_offset],
-                childFramePosition=[0,0,0])
-        
-        robot_pos = list(self._get_scaled_position())
-        robot_pos[2] += self.glass_offset
-        robot_orn = self.get_orientation()
-        p.resetBasePositionAndOrientation(self.glass_id, robot_pos, robot_orn)
-                
-
-        self.motor_names  = ["abdomen_z", "abdomen_y", "abdomen_x"]
-        self.motor_power  = [100, 100, 100]
-        self.motor_names += ["right_hip_x", "right_hip_z", "right_hip_y", "right_knee"]
-        self.motor_power += [100, 100, 300, 200]
-        self.motor_names += ["left_hip_x", "left_hip_z", "left_hip_y", "left_knee"]
-        self.motor_power += [100, 100, 300, 200]
-        self.motor_names += ["right_shoulder1", "right_shoulder2", "right_elbow"]
-        self.motor_power += [75, 75, 75]
-        self.motor_names += ["left_shoulder1", "left_shoulder2", "left_elbow"]
-        self.motor_power += [75, 75, 75]
-        self.motors = [self.jdict[n] for n in self.motor_names]
-        
-
-    def apply_action(self, a):
-        if self.is_discrete:
-            realaction = self.action_list[a]
-        else:
-            force_gain = 1
-            for i, m, power in zip(range(17), self.motors, self.motor_power):
-                m.set_motor_torque( float(force_gain * power*self.power*a[i]) )
-            #m.set_motor_torque(float(force_gain * power * self.power * np.clip(a[i], -1, +1)))
-
-    def alive_bonus(self, z, pitch):
-        return +2 if z > 0.78 else -1   # 2 here because 17 joints produce a lot of electricity cost just from policy noise, living must be better than dying
-    
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'), ): 0,
-            (): 1
-        }
-
-
 class Husky(WalkerBase):
     foot_list = ['front_left_wheel_link', 'front_right_wheel_link', 'rear_left_wheel_link', 'rear_right_wheel_link']
     mjcf_scaling = 1
     model_type = "URDF"
     default_scale = 0.6
-    
+    default_power = 2.5
+
     def __init__(self, config, env=None):
         self.config = config
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        
-        WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4, 
-                            sensor_dim=23, power=2.5, scale=scale,
+        power = config["power"] if "power" in config.keys() else self.default_power
+        s_dim = 23
+
+        WalkerBase.__init__(self, "husky.urdf", "base_link", action_dim=4,
+                            sensor_dim=s_dim, power=power, scale=scale,
                             initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
+                            target_pos=config["target_pos"],
+                            resolution=config["resolution"],
+                            env=env)
         self.is_discrete = config["is_discrete"]
 
         if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)        
+            self.action_space = gym.spaces.Discrete(5)
             self.torque = 0.03
-            self.action_list = [[self.torque, self.torque, self.torque, self.torque],
-                                [-self.torque, -self.torque, -self.torque, -self.torque],
-                                [self.torque, -self.torque, self.torque, -self.torque],
-                                [-self.torque, self.torque, -self.torque, self.torque],
-                                [0, 0, 0, 0]]
+            self.action_list = [[self.torque, self.torque, self.torque, self.torque],  # Forward
+                                [-self.torque, -self.torque, -self.torque, -self.torque],  # Backward
+                                [self.torque, -self.torque, self.torque, -self.torque],  # Turn rigth
+                                [-self.torque, self.torque, -self.torque, self.torque],  # Turn left
+                                [0, 0, 0, 0]]  # Stop
 
             self.setup_keys_to_action()
         else:
             action_high = 0.02 * np.ones([4])
             self.action_space = gym.spaces.Box(-action_high, action_high)
-        
+
     def apply_action(self, action):
         if self.is_discrete:
-            realaction = self.action_list[action]
+            act = int(action) #It is used for A2C algorithm
+            realaction = self.action_list[act]
         else:
             realaction = action
         WalkerBase.apply_action(self, realaction)
@@ -514,6 +336,17 @@ class Husky(WalkerBase):
         else:
             return 0
 
+    def feet_col(self,ground_ids,foot_col):
+        feet_collision_cost = 0.0
+        for i, f in enumerate(self.feet):
+            contact_ids = set((x[2], x[4]) for x in f.contact_list())
+            if (ground_ids & contact_ids):
+                # see Issue 63: https://github.com/openai/roboschool/issues/63
+                feet_collision_cost += foot_col
+                self.feet_contact[i] = 1.0
+            else:
+                self.feet_contact[i] = 0.0
+        return feet_collision_cost
 
     def robot_specific_reset(self):
         WalkerBase.robot_specific_reset(self)
@@ -523,290 +356,6 @@ class Husky(WalkerBase):
         bottom_xyz = self.parts["base_link"].pose().xyz()
         alive = top_xyz[2] > bottom_xyz[2]
         return +1 if alive else -100  # 0.25 is central sphere rad, die if it scrapes the ground
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'), ): 0, ## forward
-            (ord('s'), ): 1, ## backward
-            (ord('d'), ): 2, ## turn right
-            (ord('a'), ): 3, ## turn left
-            (): 4
-        }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
-
-
-
-
-class HuskyClimber(Husky):
-    def calc_potential(self):
-        base_potential = Husky.calc_potential(self)
-        height_potential = - 4 * self.walk_height_diff / self.scene.dt
-        print("Husky climber", base_potential, height_potential)
-        return base_potential + height_potential
-
-    def robot_specific_reset(self):
-        Ant.robot_specific_reset(self)
-        for j in self.jdict.keys():
-            self.jdict[j].power_coef = 1.5 * self.jdict[j].power_coef
-        
-        debugmode=0
-        if debugmode:
-            for k in self.jdict.keys():
-                print("Power coef", self.jdict[k].power_coef)
-
-
-class Quadrotor(WalkerBase):
-    model_type = "URDF"
-    default_scale=1
-    mjcf_scaling=1
-
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        self.is_discrete = config["is_discrete"]
-        WalkerBase.__init__(self, "quadrotor.urdf", "base_link", action_dim=4, 
-                            sensor_dim=20, power=2.5, scale = scale, 
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"], 
-                            resolution=config["resolution"], 
-                            env = env)
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(7)
-
-            self.action_list = [[1,0,0,0,0,0],
-                                [-1,0,0,0,0,0],
-                                [0,1,0,0,0,0],
-                                [0,-1,0,0,0,0],
-                                [0,0,1,0,0,0],
-                                [0,0,-1,0,0,0],
-                                [0,0,0,0,0,0]
-                                ]
-            self.setup_keys_to_action()
-        else:
-            action_high = 0.02 * np.ones([6])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
-
-        self.foot_list = []
-    def apply_action(self, action):
-        if self.is_discrete:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-
-        p.setGravity(0, 0, 0)
-        p.resetBaseVelocity(self.robot_ids[0], realaction[:3], realaction[3:])
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  ## +x
-            (ord('s'),): 1,  ## -x
-            (ord('d'),): 2,  ## +y
-            (ord('a'),): 3,  ## -y
-            (ord('z'),): 4,  ## +z
-            (ord('x'),): 5,  ## -z
-            (): 6
-        }
-
-
-class Turtlebot(WalkerBase):
-    foot_list = []
-    mjcf_scaling = 1
-    model_type = "URDF"
-    default_scale = 1
-    
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        WalkerBase.__init__(self, "turtlebot/turtlebot.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"],
-                            resolution=config["resolution"],
-                            control = 'velocity',
-                            env=env)
-        self.is_discrete = config["is_discrete"]
-
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.vel = 0.1
-            self.action_list = [[self.vel, self.vel],
-                                [-self.vel, -self.vel],
-                                [self.vel, -self.vel],
-                                [-self.vel, self.vel],
-                                [0, 0]]
-
-            self.setup_keys_to_action()
-        else:
-            action_high = 0.02 * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
-
-    def apply_action(self, action):
-        if self.is_discrete:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-        WalkerBase.apply_action(self, realaction)
-
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
-            (): 4
-        }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
-
-
-
-class JR(WalkerBase):
-    foot_list = []
-    mjcf_scaling = 1
-    model_type = "URDF"
-    default_scale = 0.6
-    
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        WalkerBase.__init__(self, "jr1_urdf/jr1_gibson.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"],
-                            resolution=config["resolution"],
-                            control = 'velocity',
-                            env=env)
-        self.is_discrete = config["is_discrete"]
-
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.vel = 0.1
-            self.action_list = [[self.vel, self.vel],
-                                [-self.vel, -self.vel],
-                                [self.vel, -self.vel],
-                                [-self.vel, self.vel],
-                                [0, 0]]
-
-            self.setup_keys_to_action()
-        else:
-            action_high = 0.02 * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
-
-    def apply_action(self, action):
-        if self.is_discrete:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-        WalkerBase.apply_action(self, realaction)
-
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
-
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  ## forward
-            (ord('s'),): 1,  ## backward
-            (ord('d'),): 2,  ## turn right
-            (ord('a'),): 3,  ## turn left
-            (): 4
-        }
-
-    def calc_state(self):
-        base_state = WalkerBase.calc_state(self)
-
-        angular_speed = self.robot_body.angular_speed()
-        return np.concatenate((base_state, np.array(angular_speed)))
-
-
-class JR2(WalkerBase):
-    foot_list = []
-    mjcf_scaling = 1
-    model_type = "URDF"
-    default_scale = 1
-
-    def __init__(self, config, env=None):
-        self.config = config
-        scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
-        WalkerBase.__init__(self, "jr2_urdf/jr2.urdf", "base_link", action_dim=4,
-                            sensor_dim=20, power=2.5, scale=scale,
-                            initial_pos=config['initial_pos'],
-                            target_pos=config["target_pos"],
-                            resolution=config["resolution"],
-                            control=['velocity', 'velocity', 'position', 'position'],
-                            env=env)
-        self.is_discrete = config["is_discrete"]
-
-        if self.is_discrete:
-            self.action_space = gym.spaces.Discrete(5)
-            self.vel = 0.01
-            self.action_list = [[self.vel, self.vel,0,0.2],
-                                [-self.vel, -self.vel,0,-0.2],
-                                [self.vel, -self.vel,-0.5,0],
-                                [-self.vel, self.vel,0.5,0],
-                                [0, 0,0,0]]
-
-            self.setup_keys_to_action()
-        else:
-            action_high = 0.02 * np.ones([4])
-            self.action_space = gym.spaces.Box(-action_high, action_high)
-
-    def apply_action(self, action):
-        if self.is_discrete:
-            realaction = self.action_list[action]
-        else:
-            realaction = action
-        WalkerBase.apply_action(self, realaction)
-
-    def steering_cost(self, action):
-        if not self.is_discrete:
-            return 0
-        if action == 2 or action == 3:
-            return -0.1
-        else:
-            return 0
-
-    def robot_specific_reset(self):
-        WalkerBase.robot_specific_reset(self)
-
-    def alive_bonus(self, z, pitch):
-        return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
 
     def setup_keys_to_action(self):
         self.keys_to_action = {
