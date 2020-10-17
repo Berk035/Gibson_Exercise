@@ -35,7 +35,7 @@ class ResPolicy(object):
         x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
         x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
 
-        num_res_net_blocks = 5
+        num_res_net_blocks = 3
         for i in range(num_res_net_blocks):
             input_data = x
             for j in range(2):

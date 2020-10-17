@@ -92,7 +92,8 @@ def train(seed):
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-09-20_500_50_73_80.model'
     print(args.reload_name)
 
-    if args.mode == "DEPTH" or args.mode == "RGB" or args.mode == "RESNET" or args.mode == "ODE":
+    modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
+    if args.mode in modes_camera:
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
@@ -140,7 +141,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="ODE")
+    parser.add_argument('--mode', type=str, default="DEPTH")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)
@@ -150,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_name', type=str, default=None)
     #---------Show Result------------
     parser.add_argument('--eps', type=int, default=4000)  # Number of episode
-    parser.add_argument('--map', type=int, default=3)  # Number of shown map
+    parser.add_argument('--map', type=int, default=5)  # Number of shown map
     parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
     args = parser.parse_args()
     main()
