@@ -102,7 +102,7 @@ class BaseEnv(gym.Env):
         self.frame = 0
         self.done = 0
         self.reward = 0
-        dump = 0
+
         state = self.robot.reset()
         self.scene.episode_restart()
         return state

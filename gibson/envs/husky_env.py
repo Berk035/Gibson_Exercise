@@ -11,7 +11,7 @@ import pybullet_data
 import cv2
 import csv
 
-THRESHOLD = 0.4
+THRESHOLD = 0.5
 FLAG_LIMIT = 3000
 CALC_OBSTACLE_PENALTY = 1
 
@@ -88,7 +88,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         close_to_target = 0
         # x_tar, y_tar, z_tar = self.robot.target_pos
         if self.robot.dist_to_target() <= THRESHOLD:
-            close_to_target = 0.25
+            close_to_target = 0.5
 
         steering_cost = self.robot.steering_cost(a)
         angle_cost = self.robot.angle_cost()
@@ -105,16 +105,15 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
         #WARNING:all rewards have rew/frame units and close to 1.0
         rewards = [
-            # WARNING:all rewards have rew/frame units and close to 1.0
             alive,  # It has 1 or 0 values
             progress,  # It calculates between two frame for target distance (Generally +-0.1, max -4,-2)
             obstacle_penalty,  # It changes between (0,-1.350) penalty values.
             angle_cost,  # It has -0.6~0 values for tend to target
             wall_collision_cost,  # It  has 0.3~0.1 values edit:0.3
             steering_cost,  # It has -0.1 values when the agent turns
-            close_to_target,  # It returns reward when agent reached the target
-            # feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
-            # joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
+            #close_to_target,  # It returns reward when agent reached the target
+            #feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
+            #joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
         ]
 
         if (debugmode):

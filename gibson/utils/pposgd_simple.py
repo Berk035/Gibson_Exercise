@@ -58,10 +58,10 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
     new = True # marks if we're on first timestep of an episode
     ob_all = env.reset()
     ob_sensor = ob_all['nonviz_sensor']
-    #WARNING: If your output consists RGB data you should change the line below.
-#    if not sensor:
-        #ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
-    ob = ob_all['depth']
+    if 'rgb_filled' in ob_all:
+        ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+    else:
+        ob = ob_all['depth']
     cur_ep_ret = 0  # return in current episode
     cur_ep_len = 0  # len of current episode
     ep_rets = []  # returns of completed episodes in this segment
@@ -124,9 +124,10 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
         #with Profiler("Environment step"):
         ob_all, rew, new, meta = env.step(ac)
 
-        #if not sensor:
-        #    ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
-        ob = ob_all['depth']
+        if 'rgb_filled' in ob_all:
+            ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+        else:
+            ob = ob_all['depth']
         ob_sensor = ob_all['nonviz_sensor']
         rews[i] = rew
 
@@ -138,9 +139,10 @@ def traj_segment_generator(pi, env, horizon, stochastic, sensor=False):
             cur_ep_ret = 0
             cur_ep_len = 0
             ob_all = env.reset()
-            #if not sensor:
-            # ob = np.concatenate([ob_all['rgb_filled'], ob_all['depth']], axis=2)
-            ob = ob_all['depth']
+            if 'rgb_filled' in ob_all:
+                ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
+            else:
+                ob = ob_all['depth']
             ob_sensor = ob_all['nonviz_sensor']
         t += 1
 
