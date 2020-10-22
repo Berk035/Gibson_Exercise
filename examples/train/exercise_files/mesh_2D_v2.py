@@ -261,7 +261,7 @@ def plot_csv():
 def main():
 	use_data = False
 	r = 50  # Number of Navigation Scenario
-	k = 2360  # Number of episode
+	k = 6500  # Number of episode
 	map = 3
 
 	# Reward Plotting

@@ -98,7 +98,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         angle_cost = self.robot.angle_cost()
         feet_collision_cost = self.robot.feet_col(self.ground_ids,self.foot_collision_cost)
 
-        obstacle_penalty = 1
+        obstacle_penalty = 0
         if CALC_OBSTACLE_PENALTY and self._require_camera_input:
             obstacle_penalty = get_obstacle_penalty(self.robot, self.render_depth)
 
@@ -112,13 +112,13 @@ class HuskyNavigateEnv(CameraRobotEnv):
         rewards = [
             #WARNING:all rewards have rew/frame units and close to 1.0
             alive, #It has 1 or 0 values
-            #progress,  # It calculates between two frame for target distance
+            progress,  # It calculates between two frame for target distance
             angle_cost,  # It has -0.6~0 values for tend to target
-            #wall_collision_cost,  # It  has 0.3~0.1 values edit:0.5
-            #steering_cost,  # It has -0.1 values when the agent turns
-            #close_to_target, #It returns reward step by step between 0.25~0.75
+            wall_collision_cost,  # It  has 0.3~0.1 values edit:0.5
+            steering_cost,  # It has -0.1 values when the agent turns
+            close_to_target, #It returns reward step by step between 0.25~0.75
 
-            #obstacle_penalty, #TODO: Aldığı değerlerin etkisi çok düşük
+            obstacle_penalty, #TODO: Aldığı değerlerin etkisi çok düşük
             #SPL #Success weighted by path length
             #feet_collision_cost, #Tekerlerin model üzerinde iç içe girmesini engellemek için yazılmış ancak hata var..
             #joints_at_limit_cost #Jointlerin 0.99 üzerindeki herbir değeri için ceza
@@ -185,8 +185,8 @@ class HuskyNavigateEnv(CameraRobotEnv):
         alive = float(self.robot.alive_bonus(height, pitch)) > 0
         #alive = len(self.robot.parts['top_bumper_link'].contact_list()) == 0
 
-        done = not alive or self.nframe > (self.config['n_step']-1) or height < 0
-        #done = not alive or self.nframe > (self.config['n_step']-1) or height < 0 or self.robot.dist_to_target() <= 0.2
+        #done = not alive or self.nframe > (self.config['n_step']-1) or height < 0
+        done = not alive or self.nframe > (self.config['n_step']-1) or height < 0 or self.robot.dist_to_target() <= 0.5
         if done:
             self.eps_so_far += 1
             self.actual_path = 0

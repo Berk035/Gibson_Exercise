@@ -12,9 +12,9 @@ robot_scale: 0.4
 power: 3.35
 
 #Train Parameters------------------------
-n_step: 300
-n_batch: 100
-n_iter: 91 #(100 Iteration)
+n_step: 500
+n_batch: 82
+n_iter: 64 #(70 Iteration)
 elm_active: false
 
 #Screen & UI Parameters------------------
