@@ -96,18 +96,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         obs_sensor[i] = ob_sensor
         obs[i] = ob
 
-        record_depth=0
-        if record_depth:
-            path_1 = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/depth_images_iteration")
-            try:
-                os.mkdir(path_1)
-            except OSError:
-                pass
-            ob1 = ob * 35 + 20 #DEPTH SCALE FACTOR and DEPTH SCALE OFFSET
-            overflow = ob1 > 255.
-            ob1[overflow] = 255.
-            cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(t), ob1)
-
         vpreds[i] = vpred
         news[i] = new
         acs[i] = ac
@@ -115,6 +103,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
 
         # with Profiler("environment step"):
         ob_all, rew, new, meta = env.step(ac)
+        ob_sensor = ob_all['nonviz_sensor']
         if 'rgb_filled' in ob_all:
             ob = np.concatenate([ob_all['rgb_filled'], ob_all["depth"]], axis=2)
         else:

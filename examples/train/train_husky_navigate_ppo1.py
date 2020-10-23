@@ -68,17 +68,17 @@ def train(seed):
     elif args.mode == "DEPTH" or args.mode == "RGB": #Fusing sensor space with image space
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=128, num_hid_layers=3, session=sess, elm_mode=elm_policy)
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
 
     elif args.mode == "RESNET":
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return resnet_policy.ResPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=128, num_hid_layers=3, session=sess, elm_mode=elm_policy)
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
 
     elif args.mode == "ODE":
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return ode_policy.ODEPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=128, num_hid_layers=3, session=sess, elm_mode=elm_policy)
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
 
     else: #Using only image space
         def policy_fn(name, ob_space, ac_space):
@@ -97,7 +97,7 @@ def train(seed):
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
-                          clip_param=0.2, entcoeff=0.05,
+                          clip_param=0.2, entcoeff=0.03,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -112,7 +112,7 @@ def train(seed):
         pposgd_simple.learn(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,
-                            clip_param=0.2, entcoeff=0.05,
+                            clip_param=0.2, entcoeff=0.03,
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',
@@ -126,7 +126,7 @@ def train(seed):
 
 def main():
     tic = time.time(); start = time.ctime()
-    #args.eps=3400 ;mesh_2D_v2.main(raw_args=args)
+    args.eps=16000 ;mesh_2D_v2.main(raw_args=args)
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
