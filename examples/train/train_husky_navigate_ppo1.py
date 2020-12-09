@@ -103,7 +103,7 @@ def train(seed):
                           schedule='linear',
                           save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                 iteration),
-                          save_per_acts=10,
+                          save_per_acts=15,
                           reload_name=args.reload_name
                           )
     else:
@@ -118,7 +118,7 @@ def train(seed):
                             schedule='linear',
                             save_name="PPO_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
                                                                   iteration),
-                            save_per_acts=10,
+                            save_per_acts=15,
                             sensor=sensor,
                             reload_name=args.reload_name
                             )
@@ -126,7 +126,7 @@ def train(seed):
 
 def main():
     tic = time.time(); start = time.ctime()
-    args.eps=16000 ;mesh_2D_v2.main(raw_args=args)
+    #args.eps=7500 ;mesh_2D_v2.main(raw_args=args)
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
@@ -142,7 +142,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="DEPTH")
+    parser.add_argument('--mode', type=str, default="ODE")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('--reload_name', type=str, default=None)
     parser.add_argument('--save_name', type=str, default=None)
     #---------Show Result------------
-    parser.add_argument('--eps', type=int, default=4000)  # Number of episode
+    parser.add_argument('--eps', type=int, default=5000)  # Number of episode
     parser.add_argument('--map', type=int, default=5)  # Number of shown map
     parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
     args = parser.parse_args()
