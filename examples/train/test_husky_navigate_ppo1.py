@@ -89,12 +89,12 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_CNN_2020-11-26_500_50_137_150.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
     modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
     if args.mode in modes_camera:
-        pposgd_fuse.learn(env, policy_fn,
+        pposgd_fuse.enjoy(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
                           clip_param=0.2, entcoeff=0.03,
@@ -109,7 +109,7 @@ def train(seed):
     else:
         if args.mode == "SENSOR": sensor = True
         else: sensor = False
-        pposgd_simple.learn(env, policy_fn,
+        pposgd_simple.enjoy(env, policy_fn,
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,
                             clip_param=0.2, entcoeff=0.03,
@@ -126,7 +126,7 @@ def train(seed):
 
 def main():
     tic = time.time(); start = time.ctime()
-    #args.eps=7500 ;mesh_2D_v2.main(raw_args=args)
+    #args.eps=6500 ;mesh_2D_v2.main(raw_args=args)
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)

@@ -9,7 +9,7 @@ sys.path.insert(0, osp.dirname(osp.abspath(__file__)))
 ## The only way to get outer python env from inside blender
 python_path = subprocess.check_output(["which", "python"]).decode("utf-8")
 virenv_path = python_path[:python_path.index("/bin")] 
-add_on_path = os.path.join(virenv_path, "lib", "python3.5", "site-packages")
+add_on_path = os.path.join(virenv_path, "lib", "python3.6", "site-packages")
 sys.path.append(add_on_path)
 os.sys.path.insert(0, add_on_path)
 

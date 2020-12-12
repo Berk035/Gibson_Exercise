@@ -38,15 +38,15 @@ def load_waypoint(curriculum=None, model=None, test=False):
         path = '/waypoints/euharlee_waypoints.csv'
         path_sort = '/waypoints/euharlee_waypoints_clipped_sort.csv'
         if test:
-            path = '/waypoints/euharlee_waypoints_clipped_sort_test.csv'
-            path_sort = '/waypoints/euharlee_waypoints_clipped_sort_test.csv'
+            path = '/waypoints/euharlee_waypoints_sort_test.csv'
+            path_sort = '/waypoints/euharlee_waypoints_sort_test.csv'
 
     elif model == 'Aloha':
         path = '/waypoints/aloha_waypoints.csv'
         path_sort = '/waypoints/aloha_waypoints_clipped_sort.csv'
         if test:
-            path = '/waypoints/aloha_waypoints_clipped_sort_test.csv'
-            path_sort = '/waypoints/aloha_waypoints_clipped_sort_test.csv'
+            path = '/waypoints/aloha_waypoints_sort_test.csv'
+            path_sort = '/waypoints/aloha_waypoints_sort_test.csv'
 
     if curriculum:
         df = ps.read_csv(currentdir + path_sort)

@@ -206,7 +206,7 @@ def main(raw_args=None):
 	"This function shows that analysis of training process"
 	deb = bool(0)
 
-	plot_csv(debug=deb) #Reward Plotting
+	#plot_csv(debug=deb) #Reward Plotting
 	plot_spl(debug=deb) #Success Rate Plotting
 
 	for x in range(raw_args.map):
