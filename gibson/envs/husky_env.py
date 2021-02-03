@@ -88,7 +88,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         close_to_target = 0
         # x_tar, y_tar, z_tar = self.robot.target_pos
         if self.robot.dist_to_target() <= THRESHOLD:
-            close_to_target = 0.5
+            close_to_target = 0.75
 
         steering_cost = self.robot.steering_cost(a)
         angle_cost = self.robot.angle_cost()

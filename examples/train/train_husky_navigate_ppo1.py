@@ -89,7 +89,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_CNN_2020-11-26_500_50_137_150.model'
+    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-11-27_500_50_137_150.model'
     print(args.reload_name)
 
     modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
@@ -98,6 +98,7 @@ def train(seed):
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
                           clip_param=0.2, entcoeff=0.03,
+                          vfcoeff=0.01,
                           optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                           gamma=0.99, lam=0.95,
                           schedule='linear',
@@ -113,6 +114,7 @@ def train(seed):
                             max_timesteps=int(num_timesteps * 1.1),
                             timesteps_per_actorbatch=tpa,
                             clip_param=0.2, entcoeff=0.03,
+                            vfcoeff=0.01,
                             optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
                             gamma=0.996, lam=0.95,
                             schedule='linear',

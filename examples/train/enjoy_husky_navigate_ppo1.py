@@ -11,7 +11,7 @@ from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple,pposgd_fuse
 #import baselines.common.tf_util as U
 from gibson.utils import utils
-from gibson.utils import cnn_policy, mlp_policy, fuse_policy
+from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy
 import datetime
 from baselines import logger
 from gibson.utils.monitor import Monitor
@@ -50,16 +50,29 @@ def train(seed):
     num_timesteps = step * episode * iteration
     tpa = step * episode
 
-    if args.mode == "SENSOR": #Blind Mode
+    if args.mode == "SENSOR":  # Blind Mode
         def policy_fn(name, ob_space, ac_space):
             return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space, hid_size=128, num_hid_layers=4,
                                         elm_mode=elm_policy)
-    elif args.mode == "FUSE": #Fusing sensor space with image space
+    elif args.mode == "DEPTH" or args.mode == "RGB":  # Fusing sensor space with image space
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=64, num_hid_layers=3, session=sess,
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess,
                                           elm_mode=elm_policy)
-    else: #Using only image space
+
+    elif args.mode == "RESNET":
+        def policy_fn(name, ob_space, sensor_space, ac_space):
+            return resnet_policy.ResPolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
+                                           save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess,
+                                           elm_mode=elm_policy)
+
+    elif args.mode == "ODE":
+        def policy_fn(name, ob_space, sensor_space, ac_space):
+            return ode_policy.ODEPolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
+                                        save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess,
+                                        elm_mode=elm_policy)
+
+    else:  # Using only image space
         def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
 
@@ -69,12 +82,13 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-09-14_600_50_91_50.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     #args.reload_name = '/home/berk/PycharmProjects/Original_Gibs/gibson/utils/models/flagrun_RGBD2_150.model'
 
     print(args.reload_name)
 
-    if args.mode == "FUSE":
+    modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
+    if args.mode in modes_camera:
         pposgd_fuse.enjoy(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
                           timesteps_per_actorbatch=tpa,
@@ -120,7 +134,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="DEPTH")
+    parser.add_argument('--mode', type=str, default="ODE")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)

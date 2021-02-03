@@ -9,8 +9,8 @@ import sys, os
 import math
 #from scipy.stats import norm
 
-SAVE_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/')
-WAY_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/core/physics/waypoints/')
+SAVE_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/examples/plot_result/')
+WAY_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/examples/plot_result/')
 
 def load_obj(fn):
 	verts = []
@@ -69,6 +69,8 @@ def mesh(model_id="", waypoint=False):
 	plt.grid(True)
 
 	if waypoint:
+		#df = pandas.read_csv(WAY_PATH + str('aloha_waypoints_sort_test.csv'))
+		#df = pandas.read_csv(WAY_PATH + str('aloha_waypoints_clipped_sort.csv'))
 		df = pandas.read_csv(WAY_PATH + str('euharlee_waypoints_sort_test.csv'))
 		#df = pandas.read_csv(WAY_PATH + str('euharlee_waypoints_clipped_sort.csv'))
 		points = df.values

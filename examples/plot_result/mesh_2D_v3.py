@@ -7,11 +7,14 @@ import sys, os
 
 path_main = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/examples/plot_result/results")
 SAVE_PATH = os.path.expanduser("~")
-name_file = ["CNN_DEPTH","Fuse_RGB","ELM_SENSOR","Fuse_DEPTH","Fuse_DEPTH_CL(False)","MLP_SENSOR","ODE_DEPTH_150","ResNet_DEPTH"]
+name_file_d = ["(DEPTH)_(CNN)","(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(ODE+MLP)","(DEPTH+SENSOR)_(RESNET+MLP)"]
+name_file_r = ["(RGB+DEPTH+SENSOR)_(CNN+MLP)","(RGB+DEPTH+SENSOR)_(ODE+MLP)","(RGB+DEPTH)_(CNN)"]
+cl = ["(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(CNN+MLP)_NCL"]
+
 #path_file = os.path.join(path_main,(name_file+"/models/iterations/values.csv"))
 
 
-def plot_csv(debug=False):
+def plot_csv(name_file=None, debug=False):
 	"Plotting iterations vs reward, entrophy loss,value loss graphs"
 	C1 = '\033[94m'
 	C1END = '\033[0m'
@@ -42,17 +45,50 @@ def plot_csv(debug=False):
 		fig.add_subplot(axes[1, 0])
 		d3 = data["LossVF"]
 		sns.lineplot(x="Iteration", y="LossVF", data=data, ax=axes[1,0], label=entry)
-		plt.legend(loc='upper left',fontsize='x-small', title_fontsize='40')
+		plt.legend(loc='lower right',fontsize='x-small', title_fontsize='40')
 		plt.fill_between(data["Iteration"], d3 - np.std(d3), d3 + np.std(d3), alpha=0.1)
 
 		fig.add_subplot(axes[1, 1])
 		d4 = data["PolSur"]
 		sns.lineplot(x="Iteration", y="PolSur", data=data, ax=axes[1,1], label=entry)
-		plt.legend(loc='upper left',fontsize='x-small', title_fontsize='40')
+		plt.legend(loc='lower right',fontsize='x-small', title_fontsize='40')
 		plt.fill_between(data["Iteration"], d4 - np.std(d4), d4 + np.std(d4), alpha=0.1)
 		fig.tight_layout()
 
-	#plt.savefig(os.path.join(SAVE_PATH + '/rew_values.png'))
+	plt.savefig(os.path.join(SAVE_PATH + '/final_values.png'))
+	if debug:
+		plt.show()
+
+
+def plot_spl(name_file=None, debug=False):
+	"Plotting iterations vs reward, entrophy loss,value loss graphs"
+	C1 = '\033[94m'
+	C1END = '\033[0m'
+	print(C1 + "PLOTTING SUCCESS:" + C1END)
+
+	sns.set(style="darkgrid", context="paper")
+	fig, axes = plt.subplots(figsize=(8, 4), nrows=1, ncols=2)
+	plt.subplots_adjust(wspace=1, hspace=1)
+
+	for entry in name_file:
+		path_file = os.path.join(path_main,(entry+"/models/success/spl.csv"))
+		data = pd.read_csv(path_file,nrows=8000)
+
+		d1 = data["Success Rate"]
+		d2 = data["SPL"]
+
+		fig.add_subplot(axes[0])
+		sns.lineplot(x="Episode", y=d1, data=data, ax=axes[0], label=entry)
+		plt.legend(loc='upper left', fontsize='x-small', title_fontsize='40')
+		plt.fill_between(data["Episode"], d1 - np.std(d1), d1 + np.std(d1), alpha=0.2)
+
+
+		fig.add_subplot(axes[1])
+		sns.distplot(d2, ax=axes[1], label=entry)
+		plt.legend(loc='upper left', fontsize='x-small', title_fontsize='40')
+		fig.tight_layout()
+
+	#plt.savefig(os.path.join(SAVE_PATH + 'success_rate.png'))
 	if debug:
 		plt.show()
 
@@ -61,7 +97,8 @@ def main(raw_args=None):
 	"This function shows that analysis of training process"
 	deb = bool(1)
 
-	plot_csv(debug=deb) #Reward Plotting
+	plot_csv(name_file=name_file_d, debug=deb) #Reward Plotting
+	#plot_spl(name_file=cl,debug=deb) #Success Rate Plotting
 
 if __name__ == '__main__':
 	main()

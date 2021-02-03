@@ -145,6 +145,7 @@ def add_vtarg_and_adv(seg, gamma, lam):
 def learn(env, policy_func, *,
           timesteps_per_actorbatch,  # timesteps per actor per update
           clip_param, entcoeff,  # clipping parameter epsilon, entropy coeff
+          vfcoeff,
           optim_epochs, optim_stepsize, optim_batchsize,  # optimization hypers
           gamma, lam,  # advantage estimation
           max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
@@ -179,12 +180,13 @@ def learn(env, policy_func, *,
     meanent = tf.reduce_mean(ent)
     pol_entpen = (-entcoeff) * meanent
 
+
     ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac)) # pnew / pold
     surr1 = ratio * atarg # surrogate from conservative policy iteration
     surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg #
     pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2)) # PPO's pessimistic surrogate (L^CLIP)
-    vf_loss = tf.reduce_mean(tf.square(pi.vpred - ret))
-    total_loss = pol_surr + pol_entpen + vf_loss
+    vf_loss = vfcoeff * tf.reduce_mean(tf.square(pi.vpred - ret))
+    total_loss = (pol_surr + pol_entpen + vf_loss)
     losses = [pol_surr, pol_entpen, vf_loss, meankl, meanent]
     loss_names = ["pol_surr", "pol_entpen", "vf_loss", "kl", "ent"]
 

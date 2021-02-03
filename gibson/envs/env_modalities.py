@@ -473,9 +473,27 @@ class CameraRobotEnv(BaseRobotEnv):
 
     def render_component(self, tag):
         if tag == View.RGB_FILLED:
+            record = 0
+            if record:
+                path_1 = os.path.join(os.path.expanduser("~"),
+                                      "PycharmProjects/Gibson_Exercise/gibson/utils/rgb_images_episode")
+                try:
+                    os.mkdir(path_1)
+                except OSError:
+                    pass
+
+                # width, height = int(depth.shape[0]), int(depth.shape[1])
+                # dim = (width, height)
+                # resized_clip = cv2.convertScaleAbs(cv2.resize(clip, dim, interpolation=cv2.INTER_AREA), alpha=(255.0))
+                # depth = cv2.convertScaleAbs(depth, alpha=(255.0))
+                img=cv2.cvtColor(self.render_rgb_filled, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(os.path.join(path_1, 'Frame_{:d}.jpg').format(self.nframe), img)
+
             return self.render_rgb_filled
+
         if tag == View.RGB_PREFILLED:
             return self.render_rgb_prefilled
+
         if tag == View.DEPTH:
             scaled_depth = self.render_depth.copy()
             scaled_depth = scaled_depth * DEPTH_SCALE_FACTOR + DEPTH_OFFSET_FACTOR

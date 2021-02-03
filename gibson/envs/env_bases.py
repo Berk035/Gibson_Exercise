@@ -212,7 +212,7 @@ class BaseEnv(gym.Env):
 
 class Camera:
     def __init__(self):
-        #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "GUI_VID.mp4")
+        p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "GUI_VID.mp4")
         pass
 
     def move_and_look_at(self,i,j,k,x,y,z):

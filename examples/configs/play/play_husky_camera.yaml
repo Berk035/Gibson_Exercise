@@ -37,7 +37,7 @@ random:
   random_init_z_range: [-0.0, 0.0]
   random_init_rot_range: [-0.57, 0.57]
 
-output: [nonviz_sensor, depth]
+output: [nonviz_sensor, depth, rgb_filled]
 resolution: 128
 speed:
   timestep: 0.01
