@@ -58,6 +58,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
         self.shortest_path = 0
         self.actual_path = 0
 
+
     def _rewards(self, action=None, debugmode=False):
 
         a = action
@@ -206,20 +207,13 @@ class HuskyNavigateEnv(CameraRobotEnv):
     def _flag_reposition(self):
         target_pos = self.robot.target_pos
 
-        self.flag = None
-        if self.gui and not self.config["display_ui"]:
-            self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
-                                                     fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
-                                                     meshScale=[0.5, 0.5, 0.5], rgbaColor=[1, 0, 0, 0.7])
-            self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1,
-                                                 basePosition=[target_pos[0], target_pos[1], 0.5])
-
     def _reset(self):
         self.total_frame = 0
         self.total_reward = 0
         obs = CameraRobotEnv._reset(self)
         self._flag_reposition()
         return obs
+
 
     ## openai-gym v0.10.5 compatibility
     step = CameraRobotEnv._step

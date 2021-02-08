@@ -89,7 +89,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2020-11-27_500_50_137_150.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
     modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
