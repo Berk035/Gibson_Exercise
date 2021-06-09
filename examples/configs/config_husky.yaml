@@ -1,17 +1,10 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
-model_id: Euharlee
+model_id: space7
 target_orn: [0, 0, 0]
 target_pos: [-1,2,0.3]
 initial_orn: [0, 0, 1.57]
 initial_pos: [-2,-6,0.3]
-
-#envname: HuskyNavigateEnv
-#model_id: Aloha
-#target_orn: [0, 0, 0]
-#target_pos: [-3.657, 4.236, 0.2]
-#initial_orn: [0, 0, -3.097]
-#initial_pos: [0.661,10.160,0.2]
 
 #Robot Specifications--------------------
 robot_scale: 0.5
@@ -21,16 +14,11 @@ control: torque
 #Train Parameters------------------------
 n_step: 500
 n_episode: 50
-#n_iter: 500
 n_iter: 137 #(150 Iteration)
-#n_iter: 119 #(130 Iteration)
-#n_iter: 91 #(100 Iteration)
-#n_iter: 73 #(80 Iteration)
-#n_iter: 64 # (70 Iteration)
 
 #Learning Method
-waypoint_active: true
-curriculum: true
+waypoint_active: false
+curriculum: false
 elm_active: false
 test_set: false
 
@@ -50,7 +38,7 @@ random:
   random_init_z_range: [-0.0, 0.0]
   random_init_rot_range: [-0.57, 0.57]
 
-output: [nonviz_sensor, depth]
+output: [nonviz_sensor]
 resolution: 128
 speed:
   timestep: 0.01

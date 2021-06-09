@@ -28,5 +28,5 @@ speed:
   timestep: 0.001
   frameskip: 10
 
-mode: headless #gui|headless
+mode: headless #gui|headless or #web_ui
 verbose: false

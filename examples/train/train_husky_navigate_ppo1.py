@@ -89,7 +89,7 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
+    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
     modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
@@ -128,7 +128,6 @@ def train(seed):
 
 def main():
     tic = time.time(); start = time.ctime()
-    #args.eps=7500 ;mesh_2D_v2.main(raw_args=args)
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
@@ -155,6 +154,6 @@ if __name__ == '__main__':
     #---------Show Result------------
     parser.add_argument('--eps', type=int, default=5000)  # Number of episode
     parser.add_argument('--map', type=int, default=5)  # Number of shown map
-    parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
+    parser.add_argument('--model', type=str, default="space7")  # Map ID
     args = parser.parse_args()
     main()
