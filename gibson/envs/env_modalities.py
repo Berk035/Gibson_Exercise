@@ -70,7 +70,6 @@ class BaseRobotEnv(BaseEnv):
         self.eps_reward = 0
         self.reward = 0
         self.eps_count = 0
-        #self.it_count=1
 
         self._robot_introduced = False
         self._scene_introduced = False
@@ -139,10 +138,6 @@ class BaseRobotEnv(BaseEnv):
         assert (self._robot_introduced)
         assert (self._scene_introduced)
         self.eps_count += 1
-
-        #print("Episode count: {}/50".format((self.eps_count%50)) + " -------- "
-        #     + "Score: {:.3g}".format(self.reward))
-
         self.nframe = 0
         self.eps_reward = 0
         BaseEnv._reset(self)
@@ -326,9 +321,6 @@ class CameraRobotEnv(BaseRobotEnv):
         ## The following properties are already instantiated inside xxx_env.py:
         BaseRobotEnv.__init__(self, config, tracking_camera, scene_type, gpu_idx)
 
-        #Deprecated
-        #self.penalty = 0
-
         if self.gui:
             self.screen_arr = np.zeros([512, 512, 3])
 
@@ -362,9 +354,10 @@ class CameraRobotEnv(BaseRobotEnv):
         self.fps = 0
 
         self.last_flagId = None
-        self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
-                                                 fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
-                                                 meshScale=[0.3, 0.3, 0.3], rgbaColor=[1, 0, 0, 0.7])
+        #self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
+        #                                         fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
+        #                                         meshScale=[0.3, 0.3, 0.3], rgbaColor=[1, 0, 0, 0.7])
+        self.visual_flagId = None
 
     def reset_observations(self):
         ## Initialize blank render image
@@ -417,11 +410,11 @@ class CameraRobotEnv(BaseRobotEnv):
         pose = [eye_pos, eye_quat]
         observations = self.render_observations(pose)
 
-        target_pos = self.robot.target_pos
-        if self.last_flagId:
-            p.removeBody(self.last_flagId)
-        self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1,
-                                             basePosition=[target_pos[0], target_pos[1], 0.5])
+        #target_pos = self.robot.target_pos
+        #if self.last_flagId:
+        #    p.removeBody(self.last_flagId)
+        #self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1,
+        #                                     basePosition=[target_pos[0], target_pos[1], 0.5])
 
         return observations #, sensor_state
 

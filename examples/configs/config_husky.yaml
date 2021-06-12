@@ -1,6 +1,6 @@
 #Environment Specifications--------------
 envname: HuskyNavigateEnv
-model_id: space7
+model_id: Euharlee
 target_orn: [0, 0, 0]
 target_pos: [-1,2,0.3]
 initial_orn: [0, 0, 1.57]
@@ -26,7 +26,7 @@ test_set: false
 fov: 1.57
 is_discrete: true
 use_filler: true
-display_ui: true
+display_ui: false
 show_diagnostics: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
@@ -38,7 +38,7 @@ random:
   random_init_z_range: [-0.0, 0.0]
   random_init_rot_range: [-0.57, 0.57]
 
-output: [nonviz_sensor]
+output: [nonviz_sensor, depth]
 resolution: 128
 speed:
   timestep: 0.01
