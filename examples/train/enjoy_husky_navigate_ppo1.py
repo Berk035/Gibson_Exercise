@@ -11,7 +11,7 @@ from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple,pposgd_fuse
 #import baselines.common.tf_util as U
 from gibson.utils import utils
-from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy
+from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy
 import datetime
 from baselines import logger
 from gibson.utils.monitor import Monitor
@@ -66,12 +66,6 @@ def train(seed):
                                            save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess,
                                            elm_mode=elm_policy)
 
-    elif args.mode == "ODE":
-        def policy_fn(name, ob_space, sensor_space, ac_space):
-            return ode_policy.ODEPolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
-                                        save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess,
-                                        elm_mode=elm_policy)
-
     else:  # Using only image space
         def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
@@ -82,12 +76,12 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
+    args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_DEPTH_2021-06-13_500_35_92_15.model'
     #args.reload_name = '/home/berk/PycharmProjects/Original_Gibs/gibson/utils/models/flagrun_RGBD2_150.model'
 
     print(args.reload_name)
 
-    modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
+    modes_camera = ["DEPTH", "RGB", "RESNET"]
     if args.mode in modes_camera:
         pposgd_fuse.enjoy(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
@@ -134,7 +128,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="ODE")
+    parser.add_argument('--mode', type=str, default="DEPTH")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)

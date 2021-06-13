@@ -12,7 +12,7 @@ from baselines.common import set_global_seeds
 from gibson.utils.actor_critic_simple import learn
 from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
-from gibson.utils import ac2_policy
+from gibson.utils import fuse_policy
 from gibson.utils import utils_2
 from baselines import logger
 from gibson.utils.monitor import Monitor
@@ -24,10 +24,8 @@ import time
 import datetime
 import examples.plot_result
 
-#Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
-#Shows computation device ----> sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-def train(seed, policy, lrschedule):
+def train(seed):
     rank = MPI.COMM_WORLD.Get_rank()
     sess = utils_2.make_gpu_session(args.num_gpu)
     sess.__enter__()
@@ -57,23 +55,29 @@ def train(seed, policy, lrschedule):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    #def policy_fn(name, ob_space, sensor_space, ac_space, reuse):
-    #    return ac2_policy.CnnPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-    #                                      save_per_acts=10000, hid_size=128, num_hid_layers=4, sess=sess,
-    #                                nbatch=tpa, nsteps=num_timesteps, reuse=reuse)
+    def policy_fn(name, ob_space, sensor_space, ac_space):
+        return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
+                                         save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess)
 
-    policy_fn = ac2_policy.CnnPolicy
-    #def policy_fn():
-    #    return ac2_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-    #                                      save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess)
-
-    learn(policy_fn, env, seed, nsteps=step, total_timesteps=int(num_timesteps * 1.1), lrschedule=lrschedule)
+    learn(env, policy_fn,
+                         max_timesteps=int(num_timesteps * 1.1),
+                         timesteps_per_actorbatch=tpa,
+                         entcoeff=0.05,
+                         vfcoeff=0.01,
+                         optim_epochs=4, optim_stepsize=1e-3, optim_batchsize=64,
+                         gamma=0.996, lam=0.95,
+                         schedule='linear',
+                         save_name="A2C_{}_{}_{}_{}_{}".format(args.mode, datetime.date.today(), step, episode,
+                                                               iteration),
+                         save_per_acts=15,
+                         reload_name=args.reload_name
+                         )
     env.close()
 
 def main():
     tic = time.time(); start = time.ctime()
     logger.configure()
-    train(seed=5, policy=args.policy, lrschedule=args.lrschedule)
+    train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     mesh_2D_v2.main(raw_args=args)
@@ -97,12 +101,8 @@ if __name__ == '__main__':
     parser.add_argument('--reload_name', type=str, default=None)
     parser.add_argument('--save_name', type=str, default=None)
     #---------Show Result------------
-    parser.add_argument('--eps', type=int, default=5000)  # Number of episode
-    parser.add_argument('--map', type=int, default=5)  # Number of shown map
+    parser.add_argument('--eps', type=int, default=3000)  # Number of episode
+    parser.add_argument('--map', type=int, default=3)  # Number of shown map
     parser.add_argument('--model', type=str, default="Euharlee")  # Map ID
-    #--------------------------------
-    parser.add_argument('--policy', help='Policy architecture', choices=['cnn', 'lstm', 'lnlstm'], default='cnn')
-    parser.add_argument('--lrschedule', help='Learning rate schedule', choices=['constant', 'linear'],
-                        default='constant')
     args = parser.parse_args()
     main()

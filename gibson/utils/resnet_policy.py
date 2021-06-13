@@ -7,20 +7,22 @@ from baselines.common.mpi_running_mean_std import RunningMeanStd
 import cv2,os
 import numpy as np
 import matplotlib.pyplot as plt
+from gibson.utils.ops import *
+from gibson.utils.utils_res import *
 
 class ResPolicy(object):
     recurrent = False
-    def __init__(self, name, ob_space, sensor_space, ac_space, session, hid_size, num_hid_layers, save_per_acts=None,
+    def __init__(self, name, ob_space, sensor_space, ac_space, session, hid_size, num_hid_layers, res_n, save_per_acts=None,
                  kind='large', elm_mode=False):
         self.total_count = 0
         self.curr_count = 0
         self.save_per_acts = save_per_acts
         self.session = session
         with tf.variable_scope(name):
-            self._init(ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind, elm_mode)
+            self._init(ob_space, sensor_space, ac_space, hid_size, num_hid_layers, res_n, kind, elm_mode)
             self.scope = tf.get_variable_scope().name
 
-    def _init(self, ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind, elm_mode):
+    def _init(self, ob_space, sensor_space, ac_space, hid_size, num_hid_layers, res_n, kind, elm_mode):
         assert isinstance(ob_space, gym.spaces.Box)
         assert isinstance(sensor_space, gym.spaces.Box)
 
@@ -35,14 +37,57 @@ class ResPolicy(object):
         x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
         x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
 
-        num_res_net_blocks = 3
-        for i in range(num_res_net_blocks):
-            input_data = x
-            for j in range(2):
-                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), filter_size=[3, 3], pad="SAME"))
-            x = tf.nn.relu(tf.math.add(x,input_data))
+        # num_res_net_blocks = 3
+        # for i in range(num_res_net_blocks):
+        #     input_data = x
+        #     for j in range(2):
+        #         x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), filter_size=[3, 3], pad="SAME"))
+        #     x = tf.nn.relu(tf.math.add(x,input_data))
+        #
+        # x = U.flattenallbut0(x)
+        is_training=True
+        if res_n < 50:
+            residual_block = resblock
+        else:
+            residual_block = bottle_resblock
 
-        x = U.flattenallbut0(x)
+        residual_list = get_residual_layer(res_n)
+
+        ch = 32  # paper is 64
+        x = conv(x, channels=ch, kernel=3, stride=1, scope='conv')
+
+        for i in range(residual_list[0]):
+            x = residual_block(x, channels=ch, is_training=is_training, downsample=False, scope='resblock0_' + str(i))
+
+        ########################################################################################################
+
+        x = residual_block(x, channels=ch * 2, is_training=is_training, downsample=True, scope='resblock1_0')
+
+        for i in range(1, residual_list[1]):
+            x = residual_block(x, channels=ch * 2, is_training=is_training, downsample=False,
+                               scope='resblock1_' + str(i))
+
+        ########################################################################################################
+
+        x = residual_block(x, channels=ch * 4, is_training=is_training, downsample=True, scope='resblock2_0')
+
+        for i in range(1, residual_list[2]):
+            x = residual_block(x, channels=ch * 4, is_training=is_training, downsample=False,
+                               scope='resblock2_' + str(i))
+
+        ########################################################################################################
+
+        x = residual_block(x, channels=ch * 8, is_training=is_training, downsample=True, scope='resblock_3_0')
+
+        for i in range(1, residual_list[3]):
+            x = residual_block(x, channels=ch * 8, is_training=is_training, downsample=False,
+                               scope='resblock_3_' + str(i))
+
+        ########################################################################################################
+
+        x = batch_norm(x, is_training, scope='batch_norm')
+        x = relu(x)
+        x = global_avg_pooling(x)
         x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
 
         ## Obfilter on sensor output
@@ -69,7 +114,6 @@ class ResPolicy(object):
         self.pd = pdtype.pdfromflat(logits)
         self.vpred = tf.layers.dense(x, 1, name="value", kernel_initializer=U.normc_initializer(1.0))[:, 0]
 
-        # self.session.run(logits.kernel)
         self.state_in = []
         self.state_out = []
 

@@ -183,7 +183,7 @@ class BaseRobotEnv(BaseEnv):
 
         debugmode = 0
         if debugmode:
-            print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
+            # print("Eps frame: {} reward: {:.5g}".format(self.nframe, self.reward))
             # print("Frame Reward: %.5f" % sum(self.rewards))
             # print("Position: x={:.3f}, y={:.3f}, z={:.3f}".format(x, y, z))
             # print("Orientation: r={:.3f}, p={:.3f}, y={:.3f}".format(roll, pitch, yaw))

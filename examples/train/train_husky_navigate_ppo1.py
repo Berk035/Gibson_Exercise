@@ -12,7 +12,7 @@ from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple, pposgd_fuse
 from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
-from gibson.utils import cnn_policy, mlp_policy, fuse_policy, ac2_policy
+from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy
 from gibson.utils import utils
 from baselines import logger
 from gibson.utils.monitor import Monitor
@@ -70,10 +70,11 @@ def train(seed):
             return fuse_policy.FusePolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
                                           save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
 
-    elif args.mode == "A2C": #Actor critic model
+    elif args.mode == "RESNET":  # ResNet
         def policy_fn(name, ob_space, sensor_space, ac_space):
-            return ac2_policy.A2CPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
-                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess)
+            return resnet_policy.ResPolicy(name=name, ob_space=ob_space, sensor_space=sensor_space, ac_space=ac_space,
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, res_n=5, session=sess,
+                                          elm_mode=elm_policy)
     else: #Using only image space
         def policy_fn(name, ob_space, ac_space):
             return cnn_policy.CnnPolicy(name=name, ob_space=ob_space, ac_space=ac_space, session=sess, kind='small')
@@ -86,7 +87,7 @@ def train(seed):
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
-    modes_camera = ["DEPTH", "RGB"]
+    modes_camera = ["DEPTH", "RGB", "RESNET"]
     if args.mode in modes_camera:
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
@@ -151,7 +152,7 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="A2C")
+    parser.add_argument('--mode', type=str, default="RESNET")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)
