@@ -38,7 +38,7 @@ test_set: false
 fov: 1.57
 is_discrete: true
 use_filler: true
-display_ui: true
+display_ui: false
 show_diagnostics: false
 ui_num: 2
 ui_components: [RGB_FILLED, DEPTH]
@@ -59,6 +59,6 @@ speed:
 #Mode Parameters-------------------------
 mode: headless #gui|headless #web_ui
 verbose: false
-fast_lq_render: false
+fast_lq_render: true
 enjoy: false
 enable_ui_recording: false

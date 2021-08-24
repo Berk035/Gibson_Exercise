@@ -11,7 +11,8 @@ name_file_d = ["(DEPTH)_(CNN)","(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(ODE+M
 name_file_r = ["(RGB+DEPTH+SENSOR)_(CNN+MLP)","(RGB+DEPTH+SENSOR)_(ODE+MLP)","(RGB+DEPTH)_(CNN)"]
 cl = ["(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(CNN+MLP)_NCL"]
 
-#path_file = os.path.join(path_main,(name_file+"/models/iterations/values.csv"))
+name_file = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise")
+path_file = os.path.join(path_main,(name_file+"/models/iterations/values.csv"))
 
 
 def plot_csv(name_file=None, debug=False):
@@ -24,7 +25,6 @@ def plot_csv(name_file=None, debug=False):
 
 	fig, axes = plt.subplots(figsize=(12,12), nrows=2, ncols=2)
 	plt.subplots_adjust(wspace=1, hspace=1)
-
 
 	for entry in name_file:
 		path_file = os.path.join(path_main,(entry+"/models/iterations/values.csv"))
@@ -98,6 +98,7 @@ def main(raw_args=None):
 	deb = bool(1)
 
 	plot_csv(name_file=name_file_d, debug=deb) #Reward Plotting
+	#plot_csv(name_file=name_file, debug=deb)  # Reward Plotting
 	#plot_spl(name_file=cl,debug=deb) #Success Rate Plotting
 
 if __name__ == '__main__':

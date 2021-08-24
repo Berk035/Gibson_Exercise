@@ -361,11 +361,6 @@ class CameraRobotEnv(BaseRobotEnv):
         self.save_frame = 0
         self.fps = 0
 
-        self.last_flagId = None
-        self.visual_flagId = p.createVisualShape(p.GEOM_MESH,
-                                                 fileName=os.path.join(pybullet_data.getDataPath(), 'cube.obj'),
-                                                 meshScale=[0.3, 0.3, 0.3], rgbaColor=[1, 0, 0, 0.7])
-
     def reset_observations(self):
         ## Initialize blank render image
         self.render_rgb_filled = np.zeros((self.windowsz, self.windowsz, 3))
@@ -416,13 +411,6 @@ class CameraRobotEnv(BaseRobotEnv):
         eye_pos, eye_quat = self.get_eye_pos_orientation()
         pose = [eye_pos, eye_quat]
         observations = self.render_observations(pose)
-
-        target_pos = self.robot.target_pos
-        if self.last_flagId:
-            p.removeBody(self.last_flagId)
-        self.last_flagId = p.createMultiBody(baseVisualShapeIndex=self.visual_flagId, baseCollisionShapeIndex=-1,
-                                             basePosition=[target_pos[0], target_pos[1], 0.5])
-
         return observations #, sensor_state
 
     def add_text(self, img):
