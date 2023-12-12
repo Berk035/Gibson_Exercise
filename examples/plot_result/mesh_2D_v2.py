@@ -194,7 +194,7 @@ def plot_spl(debug=False):
 	sns.lineplot(x="Episode", y=d1, data=data, ax=axes[0], color='blue', label="Success Rate")
 	plt.fill_between(data["Episode"], d1 - np.std(d1), d1 + np.std(d1), color='b', alpha=0.2)
 	fig.add_subplot(axes[1])
-	sns.distplot(d2, ax=axes[1], color='red', label="SPL for each eps.")
+	sns.distplot(d2, ax=axes[1], color='red', label="SPL for each eps.", kde_kws={'bw':1.5})
 	plt.legend()
 	fig.tight_layout()
 

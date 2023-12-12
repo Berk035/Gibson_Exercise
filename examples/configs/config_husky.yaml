@@ -20,13 +20,14 @@ control: torque
 
 #Train Parameters------------------------
 n_step: 500
-n_episode: 50
+n_episode: 30
 #n_iter: 500
 n_iter: 137 #(150 Iteration)
 #n_iter: 119 #(130 Iteration)
 #n_iter: 91 #(100 Iteration)
 #n_iter: 73 #(80 Iteration)
 #n_iter: 64 # (70 Iteration)
+#n_iter: 1
 
 #Learning Method
 waypoint_active: true

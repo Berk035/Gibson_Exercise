@@ -1,5 +1,11 @@
 import baselines.common.tf_util as U
 import tensorflow as tf
+from keras.applications.resnet50 import ResNet50
+from keras.layers import Input, Conv2D, Activation, BatchNormalization, GlobalAveragePooling2D, Dense, Dropout
+from keras.layers.merge import add
+from keras.activations import relu, softmax
+from keras.models import Model
+from keras import regularizers
 import gym
 from baselines.common.distributions import make_pdtype
 from baselines.common.mpi_running_mean_std import RunningMeanStd
@@ -7,6 +13,40 @@ from baselines.common.mpi_running_mean_std import RunningMeanStd
 import cv2,os
 import numpy as np
 import matplotlib.pyplot as plt
+
+def block(n_output, upscale=False):
+    # n_output: number of feature maps in the block
+    # upscale: should we use the 1x1 conv2d mapping for shortcut or not
+    
+    # keras functional api: return the function of type
+    # Tensor -> Tensor
+    def f(x):
+        
+        # H_l(x):
+        # first pre-activation
+        #h = BatchNormalization()(x)
+        h = Activation(relu)(x)
+        # first convolution
+        h = Conv2D(kernel_size=3, filters=n_output, strides=1, padding='same', kernel_regularizer=regularizers.l2(0.01))(h)
+        
+        # second pre-activation
+        #h = BatchNormalization()(x)
+        h = Activation(relu)(h)
+        # second convolution
+        h = Conv2D(kernel_size=3, filters=n_output, strides=1, padding='same', kernel_regularizer=regularizers.l2(0.01))(h)
+        
+        # f(x):
+        if upscale:
+            # 1x1 conv2d
+            f = Conv2D(kernel_size=1, filters=n_output, strides=1, padding='same')(x)
+        else:
+            # identity
+            f = x
+        
+        # F_l(x) = f(x) + H_l(x):
+        return add([f, h])
+    
+    return f
 
 class ResPolicy(object):
     recurrent = False
@@ -32,18 +72,67 @@ class ResPolicy(object):
                                       shape=[sequence_length] + list(sensor_space.shape))
 
         x = ob / 255.0
-        x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
-        x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
+        # x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
+        # x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
 
-        num_res_net_blocks = 3
-        for i in range(num_res_net_blocks):
-            input_data = x
-            for j in range(2):
-                x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), filter_size=[3, 3], pad="SAME"))
-            x = tf.nn.relu(tf.math.add(x,input_data))
+        # num_res_net_blocks = 3
+        # for i in range(num_res_net_blocks):
+        #     input_data = x
+        #     for j in range(2):
+        #         x = tf.nn.relu(U.conv2d(x, 32, "l%i"%(2*i+3+j), filter_size=[8, 8], pad="SAME"))
+        #     x = tf.nn.relu(tf.math.add(x,input_data))
 
-        x = U.flattenallbut0(x)
-        x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+        # x = U.flattenallbut0(x)
+        # x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+
+        # input_tensor = Input(shape=(128,128,1), name="input")
+        # x = Conv2D(3,(3,3),padding='same')(x)
+        
+        # x = tf.image.grayscale_to_rgb(x, name=None)
+        # base_model = ResNet50(input_tensor=x, weights=None)
+        # x = base_model.output
+        # # x = tf.keras.layers.GlobalAveragePooling2D()(x)
+        # x = Dense(256, activation='relu')(x)
+
+
+        # first conv2d with post-activation to transform the input data to some reasonable form
+        x = Conv2D(kernel_size=3, filters=32, strides=1, padding='same', kernel_regularizer=regularizers.l2(0.01))(x)
+        #x = BatchNormalization()(x)
+        x = Activation(relu)(x)
+
+        # F_1
+        x = block(32)(x)
+        # F_2
+        x = block(32)(x)
+
+        # F_3
+        # H_3 is the function from the tensor of size 28x28x16 to the the tensor of size 28x28x32
+        # and we can't add together tensors of inconsistent sizes, so we use upscale=True
+        # x = block(32, upscale=True)(x)       # !!! <------- Uncomment for local evaluation
+        # F_4
+        # x = block(32)(x)                     # !!! <------- Uncomment for local evaluation
+        # F_5
+        # x = block(32)(x)                     # !!! <------- Uncomment for local evaluation
+
+        # F_6
+        # x = block(48, upscale=True)(x)       # !!! <------- Uncomment for local evaluation
+        # F_7
+        # x = block(48)(x)                     # !!! <------- Uncomment for local evaluation
+
+        # last activation of the entire network's output
+        #x = BatchNormalization()(x)
+        x = Activation(relu)(x)
+
+        # average pooling across the channels
+        # 28x28x48 -> 1x48
+        x = GlobalAveragePooling2D()(x)
+
+        # dropout for more robust learning
+        #x = Dropout(0.2)(x)
+
+        # last softmax layer
+        x = Dense(units=256, kernel_regularizer=regularizers.l2(0.01))(x)
+        x = Activation(relu)(x)
 
         ## Obfilter on sensor output
         with tf.variable_scope("obfilter"):

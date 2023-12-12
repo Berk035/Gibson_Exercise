@@ -71,3 +71,7 @@ gibson/assets
 
 #datasets
 !/home/PycharmProjects/Gibson_Exercise/gibson/assets/dataset/Euharlee
+/home/PycharmProjects/Gibson_Exercise/examples/plot_result/
+!/home/PycharmProjects/Gibson_Exercise/examples/plot_result/mesh_2D_v2.py
+!/home/PycharmProjects/Gibson_Exercise/examples/plot_result/mesh_2D_v3.py
+!/home/PycharmProjects/Gibson_Exercise/examples/plot_result/mesh_2D_waypoints.py

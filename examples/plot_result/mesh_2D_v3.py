@@ -5,11 +5,14 @@ import seaborn as sns
 import pandas as pd
 import sys, os
 
-path_main = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/examples/plot_result/results")
+path_main = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/examples/plot_result/results_new_arch")
 SAVE_PATH = os.path.expanduser("~")
-name_file_d = ["(DEPTH)_(CNN)","(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(ODE+MLP)","(DEPTH+SENSOR)_(RESNET+MLP)"]
-name_file_r = ["(RGB+DEPTH+SENSOR)_(CNN+MLP)","(RGB+DEPTH+SENSOR)_(ODE+MLP)","(RGB+DEPTH)_(CNN)"]
-cl = ["(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(CNN+MLP)_NCL"]
+# name_file_d = ["(DEPTH)_(CNN)","(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(ODE+MLP)","(DEPTH+SENSOR)_(RESNET+MLP)"]
+name_file_d = cl = ["RESNET+SENSOR","NODE+SENSOR","RESNET+SENSOR(nodrop)","NODE+SENSOR(nodrop)"]
+# name_file_d = cl = ["(DEPTH)_(CNN)","(DEPTH)_(ODE)"]
+# name_file_r = ["(RGB+DEPTH+SENSOR)_(CNN+MLP)","(RGB+DEPTH+SENSOR)_(ODE+MLP)","(RGB+DEPTH)_(CNN)"]
+# cl = ["(DEPTH+SENSOR)_(CNN+MLP)","(DEPTH+SENSOR)_(CNN+MLP)_NCL"]
+# cl = ["(DEPTH)_(CNN)","(DEPTH)_(ODE)"]
 
 name_file = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise")
 path_file = os.path.join(path_main,(name_file+"/models/iterations/values.csv"))
@@ -84,7 +87,7 @@ def plot_spl(name_file=None, debug=False):
 
 
 		fig.add_subplot(axes[1])
-		sns.distplot(d2, ax=axes[1], label=entry)
+		sns.distplot(d2, ax=axes[1], label=entry, kde_kws={'bw':1.5})
 		plt.legend(loc='upper left', fontsize='x-small', title_fontsize='40')
 		fig.tight_layout()
 
@@ -99,7 +102,7 @@ def main(raw_args=None):
 
 	plot_csv(name_file=name_file_d, debug=deb) #Reward Plotting
 	#plot_csv(name_file=name_file, debug=deb)  # Reward Plotting
-	#plot_spl(name_file=cl,debug=deb) #Success Rate Plotting
+	plot_spl(name_file=cl,debug=deb) #Success Rate Plotting
 
 if __name__ == '__main__':
 	main()

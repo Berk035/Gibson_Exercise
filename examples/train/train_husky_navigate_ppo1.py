@@ -12,7 +12,7 @@ from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple, pposgd_fuse
 from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
-from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy
+from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy, ode_policy_cnn
 from gibson.utils import utils
 from baselines import logger
 from gibson.utils.monitor import Monitor
@@ -37,7 +37,7 @@ def callback(lcl, glb):
 
 def train(seed):
     rank = MPI.COMM_WORLD.Get_rank()
-    sess = utils.make_gpu_session(args.num_gpu)
+    sess = utils.make_gpu_session(args.num_gpu) #GPU memory allocation is set 0.9
     sess.__enter__()
 
     if args.meta != "":
@@ -79,6 +79,11 @@ def train(seed):
         def policy_fn(name, ob_space, sensor_space, ac_space):
             return ode_policy.ODEPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
                                           save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
+        
+    elif args.mode == "ODE_CNN":
+        def policy_fn(name, ob_space, sensor_space, ac_space):
+            return ode_policy_cnn.ODEPolicy(name=name, ob_space=ob_space, sensor_space = sensor_space, ac_space=ac_space,
+                                          save_per_acts=10000, hid_size=128, num_hid_layers=4, session=sess, elm_mode=elm_policy)
 
     else: #Using only image space
         def policy_fn(name, ob_space, ac_space):
@@ -92,7 +97,7 @@ def train(seed):
     #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
-    modes_camera = ["DEPTH", "RGB", "RESNET", "ODE"]
+    modes_camera = ["DEPTH", "RGB", "RESNET", "ODE","ODE_CNN"]
     if args.mode in modes_camera:
         pposgd_fuse.learn(env, policy_fn,
                           max_timesteps=int(num_timesteps * 1.1),
@@ -132,7 +137,6 @@ def main():
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
-    mesh_2D_v2.main(raw_args=args)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
     pathtxt = os.path.join(os.path.expanduser("~"),
                            "PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt")
@@ -140,11 +144,12 @@ def main():
     f.write("Start-Finish: {} *** {}\n".format(start,finish))
     f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
     f.close()
+    #mesh_2D_v2.main(raw_args=args)
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--mode', type=str, default="SENSOR")
+    parser.add_argument('--mode', type=str, default="ODE")
     parser.add_argument('--num_gpu', type=int, default=1)
     parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--disable_filler', action='store_true', default=False)

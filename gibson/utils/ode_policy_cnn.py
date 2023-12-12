@@ -4,10 +4,6 @@ import gym
 from baselines.common.distributions import make_pdtype
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from gibson.utils.ODEBlock import ODEBlock
-from keras.layers import Input, Conv2D, Activation, BatchNormalization, GlobalAveragePooling2D, Dense, Dropout
-from keras.activations import relu, softmax
-from keras.models import Model
-from keras import regularizers
 
 class ODEPolicy(object):
     recurrent = False
@@ -38,61 +34,29 @@ class ODEPolicy(object):
             x = tf.nn.relu(U.conv2d(x, 16, "l1", [8, 8], [4, 4], pad="VALID"))
             x = tf.nn.relu(U.conv2d(x, 32, "l2", [4, 4], [2, 2], pad="VALID"))
             x = ODEBlock(32, (3, 3))(x)
-            x = ODEBlock(32, (3, 3))(x)
-            #x = BatchNormalization()(x)
-            x = Activation(relu)(x)
-            #average pooling across the channels
-            x = GlobalAveragePooling2D()(x)
-            #dropout for more robust learning
-            #x = Dropout(0.2)(x)
             x = U.flattenallbut0(x)
             x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
-
-        # first conv2d with post-activation to transform the input data to some reasonable form
-        # x = Conv2D(kernel_size=3, filters=32, strides=1, padding='same', kernel_regularizer=regularizers.l2(0.01))(x)
-        # x = BatchNormalization()(x)
-        # x = Activation(relu)(x)
-
-        # # F_1
-        # x = ODEBlock(32, (3,3))(x)
-        # F_2
-        # x = ODEBlock(16, (3,3))(x)
-
-        # last activation of the entire network's output
-        # x = BatchNormalization()(x)
-        # x = Activation(relu)(x)
-
-        # # average pooling across the channels
-        # # 28x28x48 -> 1x48
-        # x = GlobalAveragePooling2D()(x)
-
-        # # dropout for more robust learning
-        # x = Dropout(0.2)(x)
-
-        # last softmax layer
-        # x = Dense(units=256, kernel_regularizer=regularizers.l2(0.01))(x)
-        # x = Activation(relu)(x)
 
         ## Obfilter on sensor output
         with tf.variable_scope("obfilter"):
             self.ob_rms = RunningMeanStd(shape=sensor_space.shape)
 
-        obz_sensor = tf.clip_by_value((ob_sensor - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
-        # x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
+        # obz_sensor = tf.clip_by_value((ob_sensor - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
+        # # x = tf.nn.relu(tf.layers.dense(x, 256, name='lin', kernel_initializer=U.normc_initializer(1.0)))
 
-        last_out = obz_sensor
-        if not elm_mode:
-            ## Adapted from mlp_policy
-            for i in range(num_hid_layers):
-                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i" % (i + 1),
-                                                      kernel_initializer=U.normc_initializer(1.0)))
-            y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
-        else:
-            last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc1",
-                                                  kernel_initializer=U.normc_initializer(1.0), trainable=False))
-            y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
+        # last_out = obz_sensor
+        # if not elm_mode:
+        #     ## Adapted from mlp_policy
+        #     for i in range(num_hid_layers):
+        #         last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc%i" % (i + 1),
+        #                                               kernel_initializer=U.normc_initializer(1.0)))
+        #     y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
+        # else:
+        #     last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="vffc1",
+        #                                           kernel_initializer=U.normc_initializer(1.0), trainable=False))
+        #     y = tf.layers.dense(last_out, 64, name="vffinal", kernel_initializer=U.normc_initializer(1.0))
 
-        x = tf.concat([x, y], 1)
+        # x = tf.concat([x, y], 1)
         logits = tf.layers.dense(x, pdtype.param_shape()[0], name="logits",
                                  kernel_initializer=U.normc_initializer(0.01))
         self.pd = pdtype.pdfromflat(logits)
