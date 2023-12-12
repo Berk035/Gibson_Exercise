@@ -2,7 +2,7 @@ import baselines.common.tf_util as U
 import tensorflow as tf
 from keras.applications.resnet50 import ResNet50
 from keras.layers import Input, Conv2D, Activation, BatchNormalization, GlobalAveragePooling2D, Dense, Dropout
-from keras.layers.merge import add
+from keras.layers import add
 from keras.activations import relu, softmax
 from keras.models import Model
 from keras import regularizers

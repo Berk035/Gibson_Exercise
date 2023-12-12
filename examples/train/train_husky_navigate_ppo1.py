@@ -10,7 +10,7 @@ from mpi4py import MPI
 from gibson.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple, pposgd_fuse
-# from examples.plot_result import *
+from examples.plot_result import mesh_2D_v2
 import baselines.common.tf_util as U
 from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy, ode_policy_cnn
 from gibson.utils import utils
@@ -144,7 +144,7 @@ def main():
     f.write("Start-Finish: {} *** {}\n".format(start,finish))
     f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))
     f.close()
-    #mesh_2D_v2.main(raw_args=args)
+    mesh_2D_v2.main(raw_args=args)
 
 if __name__ == '__main__':
     import argparse
