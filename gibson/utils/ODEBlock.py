@@ -1,9 +1,17 @@
-import tensorflow as tf
+# import sys, os
+# currentdir = '/home/berk/VS_Projects/Gibson_Exercise/gibson/utils/tensorflowlib'
+# parentdir = os.path.dirname(os.path.dirname(currentdir))
+# os.sys.path.insert(0,parentdir)
+
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import keras.backend as K
 import keras
 from keras.datasets import mnist
 from keras.models import Model
 from keras.layers import Layer
+import tf_slim as slim
+from .odes import *
 
 class ODEBlock(Layer):
 
@@ -21,7 +29,7 @@ class ODEBlock(Layer):
 
     def call(self, x, **kwargs):
         t = K.constant([0, 1], dtype="float32")
-        return tf.contrib.integrate.odeint(self.ode_func, x, t, rtol=1e-3, atol=1e-3)[1]
+        return odeint(self.ode_func, x, t, rtol=1e-3, atol=1e-3)[1]
 
     def compute_output_shape(self, input_shape):
         return input_shape

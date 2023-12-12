@@ -8,8 +8,8 @@ import pandas as pd
 import sys, os
 #from scipy.stats import norm
 
-SAVE_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/')
-WAY_PATH = os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/core/physics/waypoints/')
+SAVE_PATH = os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/utils/models/')
+WAY_PATH = os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/core/physics/waypoints/')
 
 def load_obj(fn):
 	verts = []
@@ -33,7 +33,7 @@ def mesh(model_id="", episode=0, waypoint=False):
 	plt.style.use('default') # switches back to matplotlib style
 
 	fn = os.path.join(os.path.expanduser("~"),
-					  "PycharmProjects/Gibson_Exercise/gibson/assets/dataset/") + str(model_id) + "/mesh_z_up.obj"
+					  "VS_Projects/Gibson_Exercise/gibson/assets/dataset/") + str(model_id) + "/mesh_z_up.obj"
 	verts, faces = load_obj(fn)
 	z = np.min(verts[:, -1]) + 0.5  # your robot height
 	cross_section = meshcut.cross_section(verts, faces, plane_orig=(0, 0, z), plane_normal=(0, 0, 1))
