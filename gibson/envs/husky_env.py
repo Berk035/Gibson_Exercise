@@ -170,14 +170,14 @@ class HuskyNavigateEnv(CameraRobotEnv):
 
             record = 1
             if record:
-                file_path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/success")
+                file_path = os.path.join(os.path.expanduser("~"),"VS_Projects/Gibson_Exercise/gibson/utils/models/success")
                 try:
                     os.mkdir(file_path)
                 except OSError:
                     pass
 
                 if self.eps_so_far == 1:
-                    with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv'),
+                    with open(os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/utils/models/success/spl.csv'),
                               'w', newline='') as csvfile:
                         fieldnames = ['Episode','Success Rate', 'SPL']
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -187,7 +187,7 @@ class HuskyNavigateEnv(CameraRobotEnv):
                                          'Success Rate': (self.SR / self.eps_so_far * 100),
                                          'SPL': (self.SPL)})
                 else:
-                    with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/success/spl.csv'),
+                    with open(os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/utils/models/success/spl.csv'),
                               'a', newline='') as csvfile:
                         fieldnames = ['Episode','Success Rate', 'SPL']
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

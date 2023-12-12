@@ -1,7 +1,9 @@
 from baselines.common import Dataset, explained_variance, fmt_row, zipsame
 from baselines import logger
 import baselines.common.tf_util as U
-import tensorflow as tf, numpy as np
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+import numpy as np
 import time
 from baselines.common.mpi_adam import MpiAdam
 from baselines.common.mpi_moments import mpi_moments
@@ -297,14 +299,14 @@ def learn(env, policy_func, *,
         #Iteration Recording
         record = 1
         if record:
-            file_path = os.path.join(os.path.expanduser("~"),"PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations")
+            file_path = os.path.join(os.path.expanduser("~"),"VS_Projects/Gibson_Exercise/gibson/utils/models/iterations")
             try:
                 os.mkdir(file_path)
             except OSError:
                 pass
 
             if iters_so_far == 1:
-                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
+                with open(os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'w', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps','Reward','LossEnt','LossVF','PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -314,7 +316,7 @@ def learn(env, policy_func, *,
                                      'Reward':np.mean(rews),'LossEnt':meanlosses[4],
                                      'LossVF':meanlosses[2],'PolSur':meanlosses[1]})
             else:
-                with open(os.path.join(os.path.expanduser("~"),'PycharmProjects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
+                with open(os.path.join(os.path.expanduser("~"),'VS_Projects/Gibson_Exercise/gibson/utils/models/iterations/values.csv'),
                           'a', newline='') as csvfile:
                     fieldnames = ['Iteration', 'TimeSteps', 'Reward', 'LossEnt', 'LossVF', 'PolSur']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

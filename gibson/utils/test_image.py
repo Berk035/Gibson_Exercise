@@ -19,7 +19,7 @@ def add_text(img):
     return img
 
 if __name__ == '__main__':
-    path_1="/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/depth_images"
+    path_1="/home/berk/VS_Projects/Gibson_Exercise/gibson/utils/depth_images"
     i=1
     while(True):
         img = cv.imread(os.path.join(path_1, 'Frame_%d.jpg')%i)

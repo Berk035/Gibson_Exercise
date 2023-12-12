@@ -10,7 +10,7 @@ from mpi4py import MPI
 from gibson.envs.husky_env import HuskyNavigateEnv
 from baselines.common import set_global_seeds
 from gibson.utils import pposgd_simple, pposgd_fuse
-from examples.plot_result import mesh_2D_v2
+# from examples.plot_result import *
 import baselines.common.tf_util as U
 from gibson.utils import cnn_policy, mlp_policy, fuse_policy, resnet_policy, ode_policy, ode_policy_cnn
 from gibson.utils import utils
@@ -22,7 +22,6 @@ import random
 import sys
 import time
 import datetime
-import examples.plot_result
 
 #Training code adapted from: https://github.com/openai/baselines/blob/master/baselines/ppo1/run_atari.py
 #Shows computation device ----> sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -94,7 +93,8 @@ def train(seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    #args.reload_name = '/home/berk/PycharmProjects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
+
+    #args.reload_name = '/home/berk/VS_Projects/Gibson_Exercise/gibson/utils/models/PPO_ODE_2020-12-05_500_50_137_150.model'
     print(args.reload_name)
 
     modes_camera = ["DEPTH", "RGB", "RESNET", "ODE","ODE_CNN"]
@@ -133,13 +133,13 @@ def train(seed):
 
 def main():
     tic = time.time(); start = time.ctime()
-    #args.eps=7500 ;mesh_2D_v2.main(raw_args=args)
+    #args.eps=7500
     train(seed=5)
     toc = time.time(); finish = time.ctime()
     sec = toc - tic;    min, sec = divmod(sec,60);   hour, min = divmod(min,60)
     print("Process Time: {:.4g} hour {:.4g} min {:.4g} sec".format(hour,min,sec))
     pathtxt = os.path.join(os.path.expanduser("~"),
-                           "PycharmProjects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt")
+                           "VS_Projects/Gibson_Exercise/gibson/utils/models/time_elapsed.txt")
     f = open(pathtxt, "w+"); f.write("Date: {}\n".format(datetime.date.today()))
     f.write("Start-Finish: {} *** {}\n".format(start,finish))
     f.write("Total Time: {:.4g} hour {:.4g} min {:.4g} sec\n".format(hour, min, sec))

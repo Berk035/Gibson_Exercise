@@ -9,11 +9,9 @@ import collections
 
 def make_gpu_session(num_gpu=1):
     if num_gpu == 1:
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
-        config = tf.ConfigProto(gpu_options=gpu_options)
-        config.gpu_options.allow_growth = True
-        sess = tf.Session(config=config)
+        gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.7)
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
     else:
-        sess = tf.Session()
+        sess = tf.compat.v1.Session()
     return sess
 

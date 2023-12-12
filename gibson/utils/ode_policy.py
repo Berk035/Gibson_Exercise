@@ -1,5 +1,6 @@
 import baselines.common.tf_util as U
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import gym
 from baselines.common.distributions import make_pdtype
 from baselines.common.mpi_running_mean_std import RunningMeanStd
@@ -18,7 +19,7 @@ class ODEPolicy(object):
         self.session = session
         self.filters = 32
         self.kernel_size = 4
-        with tf.variable_scope(name):
+        with tf.compat.v1.variable_scope(name):
             self._init(ob_space, sensor_space, ac_space, hid_size, num_hid_layers, kind, elm_mode)
             self.scope = tf.get_variable_scope().name
 
